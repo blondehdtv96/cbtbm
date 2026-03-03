@@ -1,0 +1,154 @@
+================================================================================
+CARA DEBUGGING MASALAH NILAI 0.00
+================================================================================
+
+LANGKAH 1: CEK BROWSER CONSOLE
+-------------------------------
+1. Buka ujian sebagai siswa
+2. Tekan F12 → Tab "Console"
+3. Jawab 1-2 soal
+4. Perhatikan log:
+   
+   ✓ NORMAL:
+   Saving answer: {bank_soal_id: 123, jawaban: "A"}
+   ✓ Jawaban tersimpan: 123 {success: true, ...}
+   
+   ✗ ERROR:
+   ✗ Save error: Error: HTTP 500
+   ✗ Retry failed: ...
+
+5. Klik "Selesai"
+6. Perhatikan log:
+   
+   ✓ NORMAL:
+   === SAVING ALL ANSWERS ===
+   Total answers in memory: 10
+   Saving soal 123: {bank_soal_id: 123, jawaban: "A"}
+   ✓ Saved 1/10: 123
+   ...
+   ✓✓✓ ALL 10 ANSWERS SAVED SUCCESSFULLY ✓✓✓
+   
+   ✗ ERROR:
+   ✗ Failed to save soal 123: Error: HTTP 500
+   ✗✗✗ ERROR SAVING ANSWERS: ...
+
+LANGKAH 2: CEK NETWORK TAB
+---------------------------
+1. F12 → Tab "Network"
+2. Jawab 1 soal
+3. Cari request "save-jawaban"
+4. Klik request tersebut
+5. Cek:
+   - Status: Harus 200 OK (bukan 404, 500, 419)
+   - Response Tab: {"success": true, "message": "Jawaban berhasil disimpan"}
+   - Payload Tab: {bank_soal_id: 123, jawaban: "A"}
+
+LANGKAH 3: CEK DATABASE
+------------------------
+Jalankan:
+php check_jawaban.php
+
+Atau query manual:
+mysql -u root -p
+use cbtbm;
+
+SELECT * FROM peserta_ujians ORDER BY id DESC LIMIT 1;
+-- Catat peserta_ujian_id, misal: 45
+
+SELECT 
+    js.id,
+    js.bank_soal_id,
+    js.jawaban_dipilih,
+    js.is_correct,
+    js.nilai
+FROM jawaban_siswas js
+WHERE js.peserta_ujian_id = 45;
+
+YANG HARUS DICEK:
+- Apakah ada record? (Jika tidak, jawaban tidak tersimpan)
+- Apakah jawaban_dipilih terisi? (Jika NULL, ada masalah di frontend)
+- Apakah is_correct dan nilai sudah diupdate? (Jika NULL, ada masalah di grading)
+
+LANGKAH 4: CEK LOG LARAVEL
+---------------------------
+Buka: storage/logs/laravel.log
+
+Cari log terbaru (paling bawah):
+
+[2024-xx-xx] local.INFO: Submitting exam
+[2024-xx-xx] local.INFO: Processing exam submission
+[2024-xx-xx] local.INFO: Checking answer
+[2024-xx-xx] local.INFO: Exam submitted successfully
+
+Perhatikan:
+- total_jawaban vs jawaban_terisi (harus sama)
+- jawaban_detail (cek apakah jawaban kosong)
+- is_match (harus true jika jawaban benar)
+- nilai_akhir (harus > 0 jika ada jawaban benar)
+
+LANGKAH 5: TEST MANUAL
+-----------------------
+1. Buka browser console
+2. Paste script ini (ganti 45 dengan ujian_id):
+
+fetch('/cbtbm/public/exam/45/save-jawaban', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json',
+    },
+    body: JSON.stringify({
+        bank_soal_id: 123,
+        jawaban: 'A'
+    })
+})
+.then(r => r.json())
+.then(d => console.log('Response:', d))
+.catch(e => console.error('Error:', e));
+
+3. Jika berhasil: {"success": true, ...}
+4. Jika gagal: Lihat error message
+
+KEMUNGKINAN MASALAH:
+--------------------
+
+1. JAWABAN TIDAK TERSIMPAN
+   Gejala: Database kosong
+   Penyebab: Request gagal, CSRF invalid, session expired
+   Solusi: Cek network tab, cek CSRF token
+
+2. JAWABAN TERSIMPAN TAPI TIDAK DINILAI
+   Gejala: jawaban_dipilih terisi, is_correct NULL
+   Penyebab: Tidak ada opsi jawaban benar di database
+   Solusi: Cek tabel opsi_jawabans, pastikan ada is_correct = 1
+
+3. JAWABAN DINILAI TAPI NILAI AKHIR 0
+   Gejala: is_correct = 1, nilai terisi, peserta.nilai = 0
+   Penyebab: bobot_nilai = 0 atau perhitungan salah
+   Solusi: Cek bobot_nilai di bank_soals
+
+4. PATH URL SALAH
+   Gejala: 404 Not Found
+   Penyebab: Path tidak sesuai instalasi
+   Solusi: Sudah diperbaiki dengan route() helper
+
+QUICK FIX:
+----------
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+php artisan view:clear
+composer dump-autoload
+
+Restart Apache/Nginx
+
+KONTAK JIKA MASIH BERMASALAH:
+------------------------------
+Kirim:
+1. Screenshot console log
+2. Screenshot network tab
+3. Copy log dari storage/logs/laravel.log (10 baris terakhir)
+4. Screenshot database jawaban_siswas
+
+================================================================================

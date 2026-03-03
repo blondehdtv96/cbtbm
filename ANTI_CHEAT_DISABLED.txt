@@ -1,0 +1,92 @@
+================================================================================
+ANTI-CHEAT SYSTEM DINONAKTIFKAN UNTUK DEBUGGING
+================================================================================
+
+STATUS: ✓ NONAKTIF
+
+FITUR YANG DINONAKTIFKAN:
+==========================
+1. Tab Switch Detection - Bisa pindah tab tanpa warning
+2. Right-click Prevention - Bisa klik kanan
+3. Copy Prevention - Bisa copy text
+4. Keyboard Shortcuts - F12, Ctrl+C, dll bisa digunakan
+5. Back Navigation Prevention - Bisa tekan tombol back
+6. Drag Prevention - Bisa drag element
+7. Overlay Warning - Tidak muncul
+
+KEUNTUNGAN UNTUK DEBUGGING:
+============================
+✓ Bisa buka DevTools (F12) untuk cek console log
+✓ Bisa pindah tab untuk cek dokumentasi
+✓ Bisa copy-paste error message
+✓ Bisa inspect element
+✓ Tidak ada gangguan saat testing
+
+CARA MENGGUNAKAN:
+=================
+
+1. Buka ujian sebagai siswa
+2. Tekan F12 → Tab "Console"
+3. Jawab soal
+4. Perhatikan log:
+   [SELECT] Soal 38: A
+   [SAVE] Preparing to save: {bank_soal_id: 38, jawaban: "A"}
+   [SAVE] Response status: 200 OK
+   [SAVE] ✓ Success
+
+5. Cek Network Tab untuk request/response
+6. Cek database untuk verify data tersimpan
+
+CARA MENGAKTIFKAN KEMBALI:
+===========================
+
+File: resources/views/exam/mengerjakan.blade.php
+
+1. Hapus "!important" dari CSS (line ~47):
+   .cheat-overlay {
+       display: none;  /* Hapus !important */
+   }
+
+2. Uncomment JavaScript (line ~690):
+   Hapus /* di awal dan */ di akhir kode anti-cheat
+
+3. Clear cache:
+   php artisan view:clear
+   php artisan cache:clear
+
+4. Test: Pindah tab harus muncul warning
+
+DOKUMENTASI LENGKAP:
+=====================
+Lihat file: CARA_AKTIFKAN_ANTI_CHEAT.md
+
+PERINGATAN:
+===========
+⚠️ JANGAN LUPA AKTIFKAN KEMBALI SEBELUM UJIAN SEBENARNYA!
+⚠️ SISTEM INI HANYA UNTUK DEBUGGING
+⚠️ TIDAK AMAN UNTUK UJIAN PRODUCTION
+
+CHECKLIST SEBELUM UJIAN:
+=========================
+[ ] Anti-cheat sudah diaktifkan kembali
+[ ] Cache sudah di-clear
+[ ] Test di browser siswa
+[ ] Monitoring log siap
+
+FILE YANG DIUBAH:
+=================
+- resources/views/exam/mengerjakan.blade.php
+  * CSS: .cheat-overlay display: none !important
+  * JavaScript: Anti-cheat code di-comment
+
+CARA RESTORE:
+=============
+Jika ada backup:
+cp resources/views/exam/mengerjakan.blade.php.backup resources/views/exam/mengerjakan.blade.php
+
+Atau ikuti panduan di CARA_AKTIFKAN_ANTI_CHEAT.md
+
+================================================================================
+SEKARANG ANDA BISA DEBUG DENGAN BEBAS!
+Buka F12, cek console log, network tab, dan database.
+================================================================================

@@ -1,0 +1,176 @@
+================================================================================
+SOLUSI: JAWABAN SISWA TIDAK MUNCUL DI HALAMAN GURU
+================================================================================
+
+MASALAH:
+Siswa sudah mengerjakan ujian sampai selesai, tapi di halaman:
+http://127.0.0.1:8000/ujian/11/peserta/11/jawaban
+Masih dianggap "Tidak menjawab"
+
+PERBAIKAN YANG SUDAH DILAKUKAN:
+1. ✓ View ujian/jawaban.blade.php - Logika pengecekan jawaban kosong diperbaiki
+2. ✓ Controller UjianController - Ditambahkan logging detail
+3. ✓ Controller ExamController - Logging dan validasi diperbaiki
+4. ✓ Frontend mengerjakan.blade.php - Save jawaban dengan retry & logging
+
+LANGKAH TROUBLESHOOTING:
+=========================
+
+STEP 1: CEK DATABASE
+--------------------
+Jalankan script:
+    php check_jawaban.php
+
+Atau query manual:
+    mysql -u root -p
+    use cbtbm;
+    
+    SELECT 
+        id, bank_soal_id, jawaban_dipilih,
+        CASE 
+            WHEN jawaban_dipilih IS NULL THEN 'NULL'
+            WHEN jawaban_dipilih = '' THEN 'EMPTY'
+            ELSE CONCAT('VALUE: ', jawaban_dipilih)
+        END as status
+    FROM jawaban_siswas
+    WHERE peserta_ujian_id = 11;
+
+HASIL YANG DIHARAPKAN:
+- Harus ada record (10-50 baris tergantung jumlah soal)
+- jawaban_dipilih harus berisi A, B, C, D (bukan NULL atau empty)
+
+JIKA TIDAK ADA RECORD:
+→ Jawaban tidak tersimpan sama sekali
+→ Lanjut ke STEP 2
+
+JIKA ADA TAPI jawaban_dipilih NULL/EMPTY:
+→ Data tersimpan tapi kosong
+→ Lanjut ke STEP 3
+
+STEP 2: TEST SAVE JAWABAN
+--------------------------
+Jalankan:
+    php test_save_jawaban.php
+
+Masukkan peserta_ujian_id: 11
+
+Script akan:
+- Test save 1 jawaban
+- Verify data tersimpan dengan benar
+- Tampilkan semua jawaban yang ada
+
+JIKA BERHASIL:
+→ Sistem save berfungsi, masalah di data lama
+→ Lanjut ke STEP 3
+
+JIKA GAGAL:
+→ Ada masalah di database atau model
+→ Cek error message
+
+STEP 3: FIX DATA KOSONG
+------------------------
+Jika data tersimpan sebagai empty string:
+    php fix_empty_answers.php
+
+Script akan:
+- Cari semua jawaban dengan jawaban_dipilih = ''
+- Tanya konfirmasi untuk set ke NULL
+- Update data
+
+STEP 4: CEK LOG LARAVEL
+------------------------
+Buka: storage/logs/laravel.log
+
+Cari log terbaru:
+    [local.INFO] Showing jawaban page
+
+Perhatikan:
+    "jawaban_terisi": 10  <-- Harus > 0
+    "jawaban_kosong": 0
+
+JIKA jawaban_terisi = 0:
+→ Data tidak terbaca dengan benar
+→ Cek sample_jawaban di log
+
+STEP 5: CLEAR CACHE
+--------------------
+    php artisan cache:clear
+    php artisan config:clear
+    php artisan view:clear
+    php artisan route:clear
+
+Restart server:
+    # Windows XAMPP
+    Restart Apache dari XAMPP Control Panel
+    
+    # Linux
+    sudo service apache2 restart
+
+STEP 6: TEST ULANG
+-------------------
+1. Buka ujian baru sebagai siswa
+2. Tekan F12 → Tab Console
+3. Jawab 2-3 soal
+4. Perhatikan log:
+   ✓ Jawaban tersimpan: 123
+5. Klik "Selesai"
+6. Perhatikan log:
+   ✓✓✓ ALL X ANSWERS SAVED SUCCESSFULLY
+7. Login sebagai guru
+8. Buka halaman detail jawaban
+9. Harus tampil jawaban siswa
+
+TOOLS YANG TERSEDIA:
+====================
+1. check_jawaban.php - Cek data di database
+2. fix_empty_answers.php - Perbaiki data kosong
+3. test_save_jawaban.php - Test save manual
+4. check_database.sql - Query SQL lengkap
+5. PANDUAN_CEK_JAWABAN.md - Dokumentasi lengkap
+
+QUICK FIX:
+==========
+Jika siswa sudah mengerjakan tapi tidak muncul:
+
+1. Cek database:
+   php check_jawaban.php
+   
+2. Jika data ada tapi kosong:
+   php fix_empty_answers.php
+   
+3. Clear cache:
+   php artisan cache:clear
+   
+4. Refresh halaman guru
+
+PENCEGAHAN:
+===========
+Untuk ujian berikutnya:
+1. Pastikan siswa tidak refresh halaman saat ujian
+2. Pastikan koneksi internet stabil
+3. Monitor log: tail -f storage/logs/laravel.log
+4. Test dengan 1-2 siswa dulu sebelum ujian massal
+
+KONTAK JIKA MASIH BERMASALAH:
+==============================
+Kirim informasi berikut:
+1. Screenshot console log (F12) saat siswa mengerjakan
+2. Screenshot network tab
+3. Output dari: php check_jawaban.php
+4. 50 baris terakhir dari storage/logs/laravel.log
+5. Screenshot halaman guru yang menunjukkan "Tidak menjawab"
+
+================================================================================
+FILE YANG DIUBAH:
+- resources/views/ujian/jawaban.blade.php (view detail jawaban guru)
+- app/Http/Controllers/UjianController.php (controller guru)
+- app/Http/Controllers/ExamController.php (controller siswa)
+- resources/views/exam/mengerjakan.blade.php (halaman ujian siswa)
+
+FILE BARU:
+- check_jawaban.php (script cek database)
+- fix_empty_answers.php (script perbaiki data)
+- test_save_jawaban.php (script test save)
+- check_database.sql (query SQL)
+- PANDUAN_CEK_JAWABAN.md (dokumentasi lengkap)
+================================================================================

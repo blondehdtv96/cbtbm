@@ -1,0 +1,188 @@
+================================================================================
+CARA MEMPERBAIKI ERROR 404 KARENA CACHE
+================================================================================
+
+MASALAH:
+Browser masih request ke URL lama:
+http://127.0.0.1:8000/cbtbm/public/exam/13/save-jawaban
+
+Padahal kode sudah diperbaiki ke URL relatif:
+/exam/13/save-jawaban
+
+PENYEBAB:
+=========
+1. Browser cache JavaScript lama
+2. Laravel view cache belum di-clear
+3. Service worker (jika ada)
+
+SOLUSI LENGKAP:
+===============
+
+STEP 1: CLEAR LARAVEL CACHE
+----------------------------
+Buka terminal/command prompt di folder project:
+
+php artisan view:clear
+php artisan cache:clear
+php artisan config:clear
+php artisan route:clear
+
+STEP 2: HAPUS COMPILED VIEW MANUAL
+-----------------------------------
+Hapus semua file di folder:
+storage/framework/views/
+
+Windows:
+del /Q storage\framework\views\*
+
+Linux/Mac:
+rm -rf storage/framework/views/*
+
+STEP 3: CLEAR BROWSER CACHE
+----------------------------
+Di browser (Chrome/Edge/Firefox):
+
+Cara 1: Hard Refresh
+- Windows: Ctrl + Shift + R
+- Mac: Cmd + Shift + R
+
+Cara 2: Clear Cache Manual
+1. Tekan F12 (Developer Tools)
+2. Klik kanan tombol Refresh
+3. Pilih "Empty Cache and Hard Reload"
+
+Cara 3: Clear All Cache
+1. Tekan Ctrl + Shift + Delete
+2. Pilih "Cached images and files"
+3. Time range: "All time"
+4. Klik "Clear data"
+
+STEP 4: RESTART SERVER (JIKA PERLU)
+------------------------------------
+Jika pakai php artisan serve:
+1. Stop server (Ctrl + C)
+2. Start lagi: php artisan serve
+
+Jika pakai XAMPP:
+1. Stop Apache
+2. Start Apache
+
+STEP 5: TEST ULANG
+-------------------
+1. Buka browser BARU (Incognito/Private)
+   - Chrome: Ctrl + Shift + N
+   - Firefox: Ctrl + Shift + P
+   - Edge: Ctrl + Shift + N
+
+2. Login ke sistem
+
+3. Buka ujian
+
+4. Tekan F12 → Tab "Console"
+
+5. Jawab 1 soal
+
+6. Perhatikan log:
+   [SAVE] URL: /exam/13/save-jawaban  ← HARUS RELATIF
+   [SAVE] Response status: 200 OK  ← HARUS BERHASIL
+
+JIKA MASIH 404:
+===============
+
+Cek 1: Apakah file sudah benar?
+-------------------------------
+Buka: resources/views/exam/mengerjakan.blade.php
+Cari: const url = 
+Harus ada: const url = `/exam/${ujianId}/save-jawaban`;
+
+BUKAN: const url = `{{ route('exam.save-jawaban', $ujian->id) }}`;
+
+Cek 2: Apakah route terdaftar?
+-------------------------------
+php artisan route:list | findstr save-jawaban
+
+Harus ada:
+POST | exam/{ujian}/save-jawaban
+
+Cek 3: Apakah middleware benar?
+--------------------------------
+Buka: routes/web.php
+Cari: save-jawaban
+Pastikan ada middleware: ['auth', 'role:siswa']
+
+Cek 4: Cek compiled view
+-------------------------
+Buka: storage/framework/views/
+Cari file yang namanya mirip: ...mengerjakan.blade.php...
+Buka file tersebut
+Cari: save-jawaban
+Pastikan URL-nya relatif: /exam/
+
+JIKA MASIH TIDAK BISA:
+======================
+
+Solusi Ekstrim 1: Restart Komputer
+-----------------------------------
+Kadang cache sangat persistent, restart bisa membantu.
+
+Solusi Ekstrim 2: Gunakan Browser Lain
+---------------------------------------
+Test di browser berbeda:
+- Chrome
+- Firefox
+- Edge
+- Opera
+
+Solusi Ekstrim 3: Edit Langsung di Compiled View
+-------------------------------------------------
+1. Buka: storage/framework/views/
+2. Cari file yang berisi "mengerjakan"
+3. Edit langsung URL di file tersebut
+4. Save
+5. Refresh browser
+
+MONITORING:
+===========
+
+Saat test, buka 2 tab:
+
+Tab 1: Browser Console (F12)
+- Lihat request URL
+- Lihat response status
+
+Tab 2: Laravel Log
+tail -f storage/logs/laravel.log
+
+Harus ada log:
+[local.INFO] Save jawaban request
+
+CHECKLIST:
+==========
+[ ] Laravel cache cleared
+[ ] Compiled views deleted
+[ ] Browser cache cleared (Hard refresh)
+[ ] Test di Incognito mode
+[ ] URL di console: /exam/13/save-jawaban (relatif)
+[ ] Response status: 200 OK
+[ ] Database: jawaban tersimpan
+
+TIPS:
+=====
+1. Selalu test di Incognito mode saat development
+2. Disable browser cache di DevTools (F12 → Network → Disable cache)
+3. Gunakan Ctrl+Shift+R untuk hard refresh
+4. Clear Laravel cache setiap kali edit view
+
+DOKUMENTASI:
+============
+File yang sudah diperbaiki:
+- resources/views/exam/mengerjakan.blade.php
+  * Line ~532: const url = `/exam/${ujianId}/save-jawaban`;
+  * Line ~670: const url = `/exam/${ujianId}/save-jawaban`;
+
+URL sekarang RELATIF, tidak terpengaruh APP_URL.
+
+================================================================================
+SETELAH SEMUA LANGKAH, HARUS BERHASIL!
+Jika masih 404, screenshot console log dan kirim untuk analisis.
+================================================================================

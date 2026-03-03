@@ -1,0 +1,46 @@
+================================================================================
+PERBAIKAN MASALAH JAWABAN UJIAN TIDAK TERSIMPAN
+================================================================================
+
+MASALAH:
+- Saat siswa klik "Selesai", jawaban dianggap tidak ada dan tidak tersimpan
+- Kode JavaScript tidak lengkap (fungsi saveAllAnswers tidak selesai)
+- Tidak ada mekanisme untuk memastikan jawaban tersimpan sebelum submit
+
+SOLUSI YANG DITERAPKAN:
+
+1. FRONTEND (mengerjakan.blade.php)
+   ✓ Perbaiki fungsi saveAllAnswers() yang tidak lengkap
+   ✓ Tambahkan async/await untuk memastikan jawaban tersimpan dulu
+   ✓ Tambahkan retry mechanism jika request gagal
+   ✓ Tambahkan delay 500ms sebelum submit form
+   ✓ Ubah anti-cheat: toleransi 3x pindah tab (bukan langsung logout)
+   ✓ Simpan jawaban sebelum auto-submit (timer habis atau anti-cheat)
+
+2. BACKEND (ExamController.php)
+   ✓ Tambahkan validasi input di saveJawaban()
+   ✓ Tambahkan error handling & logging
+   ✓ Tambahkan method antiCheatViolation()
+   ✓ Tambahkan logging detail untuk debugging
+
+CARA KERJA SEKARANG:
+1. Siswa jawab soal → Auto-save via AJAX (real-time)
+2. Siswa klik "Selesai" → saveAllAnswers() dipanggil
+3. Tunggu semua jawaban tersimpan (Promise.all)
+4. Tunggu 500ms tambahan
+5. Baru submit form → proses grading → tampilkan hasil
+
+TESTING:
+1. Jawab beberapa soal
+2. Klik "Selesai"
+3. Cek database tabel jawaban_siswas
+4. Cek log di storage/logs/laravel.log
+
+FILE YANG DIUBAH:
+- resources/views/exam/mengerjakan.blade.php
+- app/Http/Controllers/ExamController.php
+
+DOKUMENTASI LENGKAP:
+Lihat file PERBAIKAN_JAWABAN_UJIAN.md untuk detail teknis lengkap
+
+================================================================================

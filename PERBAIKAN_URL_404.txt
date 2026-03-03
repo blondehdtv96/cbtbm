@@ -1,0 +1,97 @@
+================================================================================
+PERBAIKAN ERROR 404: POST /cbtbm/public/exam/13/save-jawaban
+================================================================================
+
+MASALAH:
+POST http://127.0.0.1:8000/cbtbm/public/exam/13/save-jawaban 404 (Not Found)
+
+PENYEBAB:
+=========
+1. APP_URL di .env: http://localhost/cbtbm/public
+2. User akses via: http://127.0.0.1:8000
+3. route() helper menggunakan APP_URL dari .env
+4. Hasil URL: http://localhost/cbtbm/public/exam/13/save-jawaban
+5. Browser request ke: http://127.0.0.1:8000/cbtbm/public/exam/13/save-jawaban
+6. Route tidak ditemukan → 404
+
+SOLUSI:
+=======
+Ubah dari route() helper ke URL relatif
+
+SEBELUM:
+const url = `{{ route('exam.save-jawaban', $ujian->id) }}`;
+// Hasil: http://localhost/cbtbm/public/exam/13/save-jawaban
+
+SESUDAH:
+const url = `/exam/${ujianId}/save-jawaban`;
+// Hasil: /exam/13/save-jawaban (relatif ke domain saat ini)
+
+KEUNTUNGAN URL RELATIF:
+========================
+✓ Bekerja di localhost
+✓ Bekerja di 127.0.0.1
+✓ Bekerja di production
+✓ Tidak terpengaruh APP_URL
+✓ Tidak perlu ubah .env
+
+FILE YANG DIUBAH:
+=================
+resources/views/exam/mengerjakan.blade.php
+- Line ~527: saveAnswer() function
+- Line ~670: saveAllAnswers() function
+
+TESTING:
+========
+1. Buka ujian: http://127.0.0.1:8000/exam/13/mengerjakan
+2. Tekan F12 → Console
+3. Jawab 1 soal
+4. Perhatikan log:
+   [SAVE] URL: /exam/13/save-jawaban  ← BENAR
+   [SAVE] Response status: 200 OK  ← BERHASIL
+
+JIKA MASIH 404:
+===============
+
+Kemungkinan 1: Route tidak terdaftar
+php artisan route:list | findstr save-jawaban
+
+Harus ada:
+POST exam/{ujian}/save-jawaban
+
+Kemungkinan 2: Middleware block
+Cek di routes/web.php:
+Route::post('/{ujian}/save-jawaban', ...)->middleware(['auth', 'role:siswa']);
+
+Kemungkinan 3: Cache route
+php artisan route:clear
+php artisan cache:clear
+
+ALTERNATIF SOLUSI:
+==================
+
+Solusi 1: Ubah APP_URL di .env
+APP_URL=http://127.0.0.1:8000
+
+Solusi 2: Gunakan url() helper
+const url = `{{ url('exam/' . $ujian->id . '/save-jawaban') }}`;
+
+Solusi 3: Gunakan asset() helper
+const url = `{{ asset('exam/' . $ujian->id . '/save-jawaban') }}`;
+
+REKOMENDASI:
+============
+✓ Gunakan URL relatif (sudah diterapkan)
+✓ Lebih fleksibel dan portable
+✓ Tidak perlu konfigurasi tambahan
+
+CATATAN UNTUK PRODUCTION:
+==========================
+Pastikan APP_URL di .env production sudah benar:
+APP_URL=https://yourdomain.com
+
+Tapi dengan URL relatif, tidak masalah jika APP_URL salah.
+
+================================================================================
+SEKARANG SAVE JAWABAN HARUS BERHASIL!
+Cek console log untuk memastikan URL: /exam/13/save-jawaban
+================================================================================

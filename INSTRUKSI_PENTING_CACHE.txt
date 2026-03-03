@@ -1,0 +1,147 @@
+================================================================================
+⚠️ INSTRUKSI PENTING: CARA MENGATASI CACHE BROWSER ⚠️
+================================================================================
+
+MASALAH:
+Browser masih menggunakan JavaScript LAMA yang ter-cache.
+URL masih ke: http://127.0.0.1:8000/cbtbm/public/exam/13/save-jawaban
+
+SOLUSI WAJIB:
+=============
+
+LANGKAH 1: TUTUP SEMUA TAB BROWSER
+-----------------------------------
+1. Tutup SEMUA tab browser yang terbuka
+2. Tutup browser sepenuhnya (jangan minimize)
+3. Tunggu 5 detik
+
+LANGKAH 2: BUKA INCOGNITO/PRIVATE MODE
+---------------------------------------
+Jangan buka browser normal! Gunakan Incognito:
+
+Chrome/Edge:
+- Tekan: Ctrl + Shift + N
+- Atau klik menu (⋮) → New Incognito Window
+
+Firefox:
+- Tekan: Ctrl + Shift + P
+- Atau klik menu (☰) → New Private Window
+
+LANGKAH 3: AKSES SISTEM
+------------------------
+Di Incognito window:
+1. Ketik: http://127.0.0.1:8000
+2. Login
+3. Buka ujian
+
+LANGKAH 4: CEK VERSI SCRIPT
+----------------------------
+1. Tekan F12 (Developer Tools)
+2. Klik tab "Console"
+3. Lihat log pertama, HARUS ADA:
+
+   === CBT EXAM SYSTEM v2.0 ===
+   URL FIX: Using relative paths
+   Anti-cheat: DISABLED for debugging
+   =====================================
+
+JIKA TIDAK ADA LOG DI ATAS:
+→ Browser masih pakai cache lama!
+→ Ulangi dari LANGKAH 1
+
+LANGKAH 5: TEST JAWABAN
+------------------------
+1. Jawab 1 soal (pilih A, B, C, atau D)
+2. Perhatikan log di Console:
+
+   HARUS ADA:
+   [SELECT] Soal 38: A
+   [SAVE] Preparing to save: {bank_soal_id: 38, jawaban: "A"}
+   [SAVE] URL: /exam/13/save-jawaban  ← HARUS RELATIF!
+   [SAVE] Response status: 200 OK  ← HARUS BERHASIL!
+
+JIKA URL MASIH: /cbtbm/public/exam/...
+→ Cache belum clear!
+→ Ulangi dari LANGKAH 1
+
+ALTERNATIF JIKA MASIH GAGAL:
+=============================
+
+CARA 1: CLEAR CACHE MANUAL
+---------------------------
+1. Tekan: Ctrl + Shift + Delete
+2. Pilih:
+   ☑ Browsing history
+   ☑ Cookies and other site data
+   ☑ Cached images and files
+3. Time range: "All time"
+4. Klik "Clear data"
+5. Tutup browser
+6. Buka lagi di Incognito
+
+CARA 2: DISABLE CACHE DI DEVTOOLS
+----------------------------------
+1. Tekan F12
+2. Klik tab "Network"
+3. Centang: ☑ Disable cache
+4. Refresh: Ctrl + Shift + R
+5. Test jawaban
+
+CARA 3: GUNAKAN BROWSER LAIN
+-----------------------------
+Jika Chrome tidak bisa, coba:
+- Firefox
+- Edge
+- Opera
+
+CARA 4: RESTART KOMPUTER
+-------------------------
+Kadang cache sangat persistent.
+Restart komputer bisa membantu.
+
+VERIFIKASI BERHASIL:
+====================
+
+✓ Console log: === CBT EXAM SYSTEM v2.0 ===
+✓ URL di log: /exam/13/save-jawaban (RELATIF)
+✓ Response: 200 OK
+✓ Database: Jawaban tersimpan
+
+JIKA MASIH GAGAL:
+=================
+
+Kirim screenshot:
+1. Console log (F12 → Console)
+2. Network tab (F12 → Network → request save-jawaban)
+3. Response tab
+
+CATATAN PENTING:
+================
+
+⚠️ JANGAN gunakan browser normal untuk test!
+⚠️ SELALU gunakan Incognito mode saat development
+⚠️ Pastikan log versi v2.0 muncul di console
+⚠️ URL HARUS relatif: /exam/... (BUKAN /cbtbm/public/exam/...)
+
+TROUBLESHOOTING:
+================
+
+Q: Kenapa harus Incognito?
+A: Incognito tidak pakai cache, jadi pasti load file terbaru.
+
+Q: Apakah data ujian hilang jika pakai Incognito?
+A: Tidak! Data tersimpan di server, bukan di browser.
+
+Q: Berapa lama cache bertahan?
+A: Bisa sampai berhari-hari jika tidak di-clear.
+
+Q: Apakah siswa juga harus pakai Incognito?
+A: Tidak, hanya untuk testing. Siswa pakai browser normal.
+
+Q: Bagaimana cara memastikan siswa dapat versi terbaru?
+A: Tambahkan meta tag no-cache (sudah ditambahkan di kode).
+
+================================================================================
+IKUTI LANGKAH DI ATAS DENGAN TELITI!
+Jika masih gagal, screenshot dan kirim untuk analisis.
+================================================================================
