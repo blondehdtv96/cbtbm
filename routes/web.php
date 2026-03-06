@@ -27,6 +27,13 @@ Route::post('/logout', [LoginController::class , 'logout'])->name('logout');
 // Super Admin Routes
 Route::middleware(['auth', 'role:superadmin'])->prefix('superadmin')->name('superadmin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class , 'superadmin'])->name('dashboard');
+    
+    // System Settings (Superadmin only)
+    Route::get('/settings', [App\Http\Controllers\SystemSettingController::class, 'index'])->name('settings.index');
+    Route::put('/settings', [App\Http\Controllers\SystemSettingController::class, 'update'])->name('settings.update');
+    Route::post('/settings/delete-image', [App\Http\Controllers\SystemSettingController::class, 'deleteImage'])->name('settings.delete-image');
+    Route::post('/settings/reset', [App\Http\Controllers\SystemSettingController::class, 'reset'])->name('settings.reset');
+    Route::get('/settings/clear-cache', [App\Http\Controllers\SystemSettingController::class, 'clearCache'])->name('settings.clear-cache');
 });
 
 // Admin Routes
@@ -95,6 +102,13 @@ Route::middleware(['auth', 'role:superadmin,admin'])->prefix('admin')->name('adm
 
     // Anti-Cheat Log
     Route::get('/anti-cheat', [AntiCheatController::class , 'index'])->name('anti-cheat.index');
+
+    // System Settings
+    Route::get('/settings', [App\Http\Controllers\SystemSettingController::class, 'index'])->name('settings.index');
+    Route::put('/settings', [App\Http\Controllers\SystemSettingController::class, 'update'])->name('settings.update');
+    Route::post('/settings/delete-image', [App\Http\Controllers\SystemSettingController::class, 'deleteImage'])->name('settings.delete-image');
+    Route::post('/settings/reset', [App\Http\Controllers\SystemSettingController::class, 'reset'])->name('settings.reset');
+    Route::get('/settings/clear-cache', [App\Http\Controllers\SystemSettingController::class, 'clearCache'])->name('settings.clear-cache');
 });
 
 // Guru Routes

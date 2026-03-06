@@ -1,0 +1,106 @@
+# MySQL Configuration for 500+ Concurrent Users
+# Place this file in /etc/mysql/conf.d/ or /etc/my.cnf.d/
+
+[mysqld]
+
+# ============================================
+# GENERAL SETTINGS
+# ============================================
+max_connections = 500
+max_connect_errors = 1000
+wait_timeout = 600
+interactive_timeout = 600
+
+# ============================================
+# INNODB SETTINGS
+# ============================================
+# Buffer Pool (set to 70-80% of available RAM)
+innodb_buffer_pool_size = 4G
+innodb_buffer_pool_instances = 8
+
+# Log Files
+innodb_log_file_size = 512M
+innodb_log_buffer_size = 64M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+
+# Performance
+innodb_io_capacity = 2000
+innodb_io_capacity_max = 4000
+innodb_read_io_threads = 8
+innodb_write_io_threads = 8
+innodb_thread_concurrency = 0
+innodb_lock_wait_timeout = 50
+
+# ============================================
+# QUERY CACHE (MySQL 5.7 and below)
+# ============================================
+# Note: Query cache is removed in MySQL 8.0+
+# query_cache_type = 1
+# query_cache_size = 256M
+# query_cache_limit = 2M
+
+# ============================================
+# TABLE CACHE
+# ============================================
+table_open_cache = 4000
+table_definition_cache = 2000
+
+# ============================================
+# THREAD CACHE
+# ============================================
+thread_cache_size = 100
+thread_stack = 256K
+
+# ============================================
+# BUFFER SIZES
+# ============================================
+key_buffer_size = 256M
+sort_buffer_size = 4M
+read_buffer_size = 2M
+read_rnd_buffer_size = 4M
+join_buffer_size = 4M
+tmp_table_size = 256M
+max_heap_table_size = 256M
+
+# ============================================
+# BINARY LOGGING (for replication/backup)
+# ============================================
+# Disable if not needed for better performance
+# log_bin = /var/log/mysql/mysql-bin.log
+# binlog_format = ROW
+# expire_logs_days = 7
+# max_binlog_size = 100M
+
+# ============================================
+# SLOW QUERY LOG (for monitoring)
+# ============================================
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow-query.log
+long_query_time = 2
+log_queries_not_using_indexes = 1
+
+# ============================================
+# CHARACTER SET
+# ============================================
+character_set_server = utf8mb4
+collation_server = utf8mb4_unicode_ci
+
+# ============================================
+# NETWORK
+# ============================================
+max_allowed_packet = 64M
+net_buffer_length = 16K
+
+# ============================================
+# SECURITY
+# ============================================
+local_infile = 0
+skip_name_resolve = 1
+
+# ============================================
+# MONITORING
+# ============================================
+performance_schema = ON
+performance_schema_max_table_instances = 12500
+performance_schema_max_table_handles = 4000

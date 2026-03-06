@@ -113,7 +113,7 @@ function printCredentials() {
             .warning { background: #fef3cd; border: 1px solid #f59e0b; padding: 10px; border-radius: 8px; font-size: 11px; color: #856404; text-align: center; margin-top: 16px; }
         </style></head>
         <body>
-            <h2>🎓 CBT SMK</h2>
+            <h2>🎓 {{ app_name() }}</h2>
             <p class="sub">Kredensial Login Siswa — Hasil Import ${new Date().toLocaleDateString('id-ID')}</p>
             <table>
                 <thead>
@@ -133,7 +133,7 @@ function printCredentials() {
                 </tbody>
             </table>
             <div class="warning">⚠️ RAHASIA — Jangan bagikan password ke orang yang tidak berhak. Simpan dengan aman!</div>
-            <p class="footer">Dicetak pada: ${new Date().toLocaleString('id-ID')} • © CBT SMK - Sistem Ujian Online</p>
+            <p class="footer">Dicetak pada: ${new Date().toLocaleString('id-ID')} • © {{ app_name() }} - {{ setting('app_tagline', 'Sistem Ujian Online') }}</p>
         </body></html>
     `);
     printWindow.document.close();

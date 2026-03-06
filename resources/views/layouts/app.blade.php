@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'CBT SMK') - Sistem Ujian Online</title>
-    <meta name="description" content="Computer Based Test (CBT) untuk SMK - Sistem Ujian Online Modern">
+    <title>@yield('title', '{{ app_name() }}') - {{ setting('app_tagline', 'Sistem Ujian Online') }}</title>
+    <meta name="description" content="{{ setting('app_description', 'Computer Based Test (CBT) untuk SMK - Sistem Ujian Online Modern') }}">
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,11 +29,15 @@
             <div class="sidebar-header">
                 <div class="sidebar-logo">
                     <div class="logo-icon">
-                        <i class="bi bi-mortarboard-fill"></i>
+                        @if(school_logo())
+                            <img src="{{ school_logo() }}" alt="Logo" style="width: 40px; height: 40px; object-fit: contain;">
+                        @else
+                            <i class="bi bi-mortarboard-fill"></i>
+                        @endif
                     </div>
                     <div class="logo-text">
-                        <h5>CBT SMK</h5>
-                        <small>Ujian Online</small>
+                        <h5>{{ app_name() }}</h5>
+                        <small>{{ setting('app_tagline', 'Ujian Online') }}</small>
                     </div>
                 </div>
                 <button class="sidebar-toggle d-lg-none" onclick="toggleSidebar()">
@@ -115,6 +119,12 @@
                         <span>Anti-Cheat Log</span>
                     </a>
 
+                    <div class="menu-label">SISTEM</div>
+                    <a href="{{ route('superadmin.settings.index') }}" class="menu-item {{ request()->routeIs('superadmin.settings.*') ? 'active' : '' }}">
+                        <i class="bi bi-gear-fill"></i>
+                        <span>Pengaturan Sistem</span>
+                    </a>
+
                 @elseif(auth()->user()->role === 'admin')
                     <div class="menu-label">DASHBOARD</div>
                     <a href="{{ route('admin.dashboard') }}" class="menu-item {{ request()->routeIs('admin.dashboard') ? 'active' : '' }}">
@@ -186,6 +196,12 @@
                     <a href="{{ route('admin.anti-cheat.index') }}" class="menu-item {{ request()->routeIs('admin.anti-cheat.*') ? 'active' : '' }}">
                         <i class="bi bi-shield-exclamation"></i>
                         <span>Anti-Cheat Log</span>
+                    </a>
+
+                    <div class="menu-label">SISTEM</div>
+                    <a href="{{ route('admin.settings.index') }}" class="menu-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
+                        <i class="bi bi-gear-fill"></i>
+                        <span>Pengaturan Sistem</span>
                     </a>
 
                 @elseif(auth()->user()->role === 'guru')

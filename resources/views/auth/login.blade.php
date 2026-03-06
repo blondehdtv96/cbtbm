@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - CBT SMK</title>
-    <meta name="description" content="Login ke sistem Computer Based Test (CBT) SMK">
+    <title>Login - {{ app_name() }}</title>
+    <meta name="description" content="Login ke sistem {{ app_name() }} - {{ setting('app_tagline', 'Sistem Ujian Online') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
@@ -468,10 +468,14 @@
         <div class="login-branding">
             <div class="branding-content">
                 <div class="branding-icon">
-                    <i class="bi bi-mortarboard-fill"></i>
+                    @if(school_logo())
+                        <img src="{{ school_logo() }}" alt="Logo" style="width: 80px; height: 80px; object-fit: contain;">
+                    @else
+                        <i class="bi bi-mortarboard-fill"></i>
+                    @endif
                 </div>
-                <h1 class="branding-title">CBT SMK</h1>
-                <p class="branding-subtitle">Sistem Ujian Online Modern untuk<br>Sekolah Menengah Kejuruan</p>
+                <h1 class="branding-title">{{ app_name() }}</h1>
+                <p class="branding-subtitle">{{ setting('app_description', 'Sistem Ujian Online Modern untuk Sekolah Menengah Kejuruan') }}</p>
 
                 <div class="branding-features">
                     <div class="branding-feature">
@@ -591,7 +595,7 @@
                 </div>
 
                 <div class="login-footer">
-                    © {{ date('Y') }} CBT SMK. All rights reserved.
+                    © {{ date('Y') }} {{ app_name() }}. All rights reserved.
                 </div>
             </div>
         </div>

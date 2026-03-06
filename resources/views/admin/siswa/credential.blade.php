@@ -126,7 +126,7 @@ function printCredential() {
             .border-box { border: 2px dashed #ddd; border-radius: 12px; padding: 24px; }
         </style></head>
         <body>
-            <h2>🎓 CBT SMK</h2>
+            <h2>🎓 {{ app_name() }}</h2>
             <p class="sub">Kredensial Login Siswa</p>
             <div class="border-box">
                 <table>
@@ -142,7 +142,7 @@ function printCredential() {
             <p class="footer">
                 Simpan kredensial ini dengan baik. Jangan bagikan password ke orang lain.<br>
                 Dicetak pada: ${new Date().toLocaleString('id-ID')}<br>
-                © CBT SMK - Sistem Ujian Online
+                © {{ app_name() }} - {{ setting('app_tagline', 'Sistem Ujian Online') }}
             </p>
         </body></html>
     `);
