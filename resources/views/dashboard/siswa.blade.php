@@ -4,108 +4,173 @@
 @section('page-title', 'Dashboard')
 @section('page-subtitle', 'Selamat datang, ' . auth()->user()->name)
 
+@push('styles')
+<link href="{{ asset('css/student-dashboard.css') }}" rel="stylesheet">
+@endpush
+
 @section('content')
-<div class="fade-in">
+<div class="student-dashboard fade-in">
+
     @if($siswa)
-    <div class="card-ios mb-4">
-        <div class="card-body">
-            <div class="d-flex align-items-center gap-3">
-                <div class="user-avatar" style="width: 56px; height: 56px; border-radius: 16px; font-size: 20px;">
-                    {{ strtoupper(substr($siswa->nama, 0, 2)) }}
-                </div>
-                <div>
-                    <h5 style="font-weight: 700; margin: 0;">{{ $siswa->nama }}</h5>
-                    <p style="color: var(--text-secondary); font-size: 14px; margin: 0;">
-                        NIS: {{ $siswa->nis }} • {{ $siswa->kelas->nama_kelas ?? '' }}
-                    </p>
-                </div>
+    @php
+        $nilaiVisible = $riwayatUjian->filter(fn($r) => $r->ujian && $r->ujian->tampilkan_nilai);
+        $rataRata = $nilaiVisible->count() > 0 ? round($nilaiVisible->avg('nilai')) : null;
+    @endphp
+    <div class="sd-hero">
+        <span class="sd-hero-blob one"></span>
+        <span class="sd-hero-blob two"></span>
+
+        <div class="sd-hero-top">
+            <div class="sd-avatar">{{ strtoupper(substr($siswa->nama, 0, 2)) }}</div>
+            <div>
+                <p class="sd-hero-name">{{ $siswa->nama }}</p>
+                <p class="sd-hero-meta">NIS {{ $siswa->nis }} &bull; {{ $siswa->kelas->nama_kelas ?? '-' }}</p>
+            </div>
+        </div>
+
+        <div class="sd-hero-stats">
+            <div class="sd-stat-pill">
+                <span class="val">{{ $ujianTersedia->count() }}</span>
+                <span class="lbl">Tersedia</span>
+            </div>
+            <div class="sd-stat-pill">
+                <span class="val">{{ $riwayatUjian->count() }}</span>
+                <span class="lbl">Selesai</span>
+            </div>
+            <div class="sd-stat-pill">
+                <span class="val">{{ $rataRata ?? '-' }}</span>
+                <span class="lbl">Rata&#8209;rata</span>
             </div>
         </div>
     </div>
     @endif
 
-    <!-- Available Exams -->
-    <h5 style="font-weight: 700; margin-bottom: 16px;">
-        <i class="bi bi-lightning-fill text-warning me-2"></i>Ujian Tersedia
-    </h5>
+    <!-- Ujian Tersedia -->
+    <div class="sd-section-title">
+        <span class="sd-section-icon warn"><i class="bi bi-lightning-charge-fill"></i></span>
+        Ujian Tersedia
+        <span class="sd-section-count">{{ $ujianTersedia->count() }}</span>
+    </div>
 
     @if($ujianTersedia->count() > 0)
-        <div class="row g-3 mb-4">
+        <div class="sd-exam-grid">
             @foreach($ujianTersedia as $ujian)
-                <div class="col-md-6 col-lg-4">
-                    <div class="card-ios" style="border-left: 4px solid var(--primary);">
-                        <div class="card-body">
-                            <h6 style="font-weight: 700; margin-bottom: 8px;">{{ $ujian->nama_ujian }}</h6>
-                            <div style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
-                                <div><i class="bi bi-book me-1"></i> {{ $ujian->mapel->nama_mapel ?? '-' }}</div>
-                                <div><i class="bi bi-clock me-1"></i> {{ $ujian->durasi_menit }} menit</div>
-                                <div><i class="bi bi-list-ol me-1"></i> {{ $ujian->jumlah_soal }} soal</div>
-                                <div><i class="bi bi-calendar me-1"></i> {{ $ujian->tanggal_selesai->format('d M Y H:i') }}</div>
-                            </div>
-                            <a href="{{ route('exam.start', $ujian) }}" class="btn btn-ios btn-ios-primary w-100">
-                                <i class="bi bi-play-fill"></i> Mulai Ujian
-                            </a>
+                @php
+                    $totalWindow = $ujian->tanggal_mulai->diffInSeconds($ujian->tanggal_selesai) ?: 1;
+                    $elapsed = min($totalWindow, max(0, $ujian->tanggal_mulai->diffInSeconds(now())));
+                    $elapsedPct = min(100, round(($elapsed / $totalWindow) * 100));
+                @endphp
+                <div class="sd-exam-card">
+                    <div class="sd-exam-head">
+                        <div class="sd-mapel-badge"><i class="bi bi-journal-bookmark-fill"></i></div>
+                        <span class="sd-live-tag"><span class="sd-live-dot"></span> LIVE</span>
+                    </div>
+
+                    <h6 class="sd-exam-title">{{ $ujian->nama_ujian }}</h6>
+                    <p class="sd-exam-mapel"><i class="bi bi-book me-1"></i>{{ $ujian->mapel->nama_mapel ?? '-' }}</p>
+
+                    <div class="sd-countdown" data-countdown data-end="{{ $ujian->tanggal_selesai->toIso8601String() }}">
+                        <i class="bi bi-hourglass-split"></i>
+                        <span class="sd-countdown-time">--:--:--</span>
+                        <span class="sd-countdown-label">sisa waktu</span>
+                    </div>
+
+                    <div class="sd-metrics">
+                        <div class="sd-metric"><i class="bi bi-clock"></i> {{ $ujian->durasi_menit }} menit</div>
+                        <div class="sd-metric"><i class="bi bi-list-ol"></i> {{ $ujian->jumlah_soal }} soal</div>
+                    </div>
+
+                    <div class="sd-progress-track">
+                        <div class="sd-progress-fill" style="width: {{ $elapsedPct }}%;"></div>
+                    </div>
+
+                    <a href="{{ route('exam.start', $ujian) }}" class="sd-btn-start">
+                        <i class="bi bi-play-fill"></i> Mulai Ujian
+                    </a>
+                </div>
+            @endforeach
+        </div>
+    @else
+        <div class="sd-empty">
+            <i class="bi bi-calendar-check"></i>
+            <h6>Tidak ada ujian tersedia</h6>
+            <p>Ujian yang dijadwalkan akan muncul di sini</p>
+        </div>
+    @endif
+
+    <!-- Riwayat Ujian -->
+    <div class="sd-section-title">
+        <span class="sd-section-icon"><i class="bi bi-clock-history"></i></span>
+        Riwayat Ujian
+        <span class="sd-section-count">{{ $riwayatUjian->count() }}</span>
+    </div>
+
+    @if($riwayatUjian->count() > 0)
+        <div class="sd-history-list">
+            @foreach($riwayatUjian as $riwayat)
+                @php
+                    $showNilai = $riwayat->ujian && $riwayat->ujian->tampilkan_nilai;
+                    $nilai = $riwayat->nilai ?? 0;
+                    $ringColor = $nilai >= 75 ? '#14B8A6' : ($nilai >= 50 ? '#FACC15' : '#EF4444');
+                @endphp
+                <div class="sd-history-card">
+                    @if($showNilai)
+                        <div class="sd-ring" style="--pct: {{ $nilai }}; --ring-color: {{ $ringColor }};">
+                            <div class="sd-ring-inner">{{ $nilai }}</div>
+                        </div>
+                    @else
+                        <div class="sd-ring" style="--pct: 100; --ring-color: #cbd5e1;">
+                            <div class="sd-ring-inner"><i class="bi bi-eye-slash"></i></div>
+                        </div>
+                    @endif
+
+                    <div class="sd-history-body">
+                        <p class="sd-history-title">{{ $riwayat->ujian->nama_ujian ?? '-' }}</p>
+                        <div class="sd-history-sub">
+                            <span>{{ $riwayat->ujian->mapel->nama_mapel ?? '-' }}</span>
+                            <span class="sd-dot-sep"></span>
+                            <span class="sd-history-date">{{ $riwayat->waktu_selesai ? $riwayat->waktu_selesai->format('d M Y, H:i') : '-' }}</span>
                         </div>
                     </div>
                 </div>
             @endforeach
         </div>
     @else
-        <div class="card-ios mb-4">
-            <div class="card-body">
-                <div class="empty-state">
-                    <i class="bi bi-calendar-check"></i>
-                    <h5>Tidak ada ujian tersedia</h5>
-                    <p>Ujian yang dijadwalkan akan muncul di sini</p>
-                </div>
-            </div>
+        <div class="sd-empty">
+            <i class="bi bi-inbox"></i>
+            <h6>Belum ada riwayat ujian</h6>
+            <p>Riwayat ujian yang sudah dikerjakan akan muncul di sini</p>
         </div>
     @endif
-
-    <!-- Exam History -->
-    <h5 style="font-weight: 700; margin-bottom: 16px;">
-        <i class="bi bi-clock-history me-2"></i>Riwayat Ujian
-    </h5>
-
-    <div class="card-ios">
-        <div class="card-body p-0">
-            @if($riwayatUjian->count() > 0)
-                <table class="table-ios">
-                    <thead>
-                        <tr>
-                            <th>Ujian</th>
-                            <th>Mapel</th>
-                            <th>Nilai</th>
-                            <th>Tanggal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($riwayatUjian as $riwayat)
-                        <tr>
-                            <td><strong>{{ $riwayat->ujian->nama_ujian ?? '-' }}</strong></td>
-                            <td>{{ $riwayat->ujian->mapel->nama_mapel ?? '-' }}</td>
-                            <td>
-                                @if($riwayat->ujian && $riwayat->ujian->tampilkan_nilai)
-                                    <span class="badge-ios {{ $riwayat->nilai >= 75 ? 'success' : ($riwayat->nilai >= 50 ? 'warning' : 'danger') }}">
-                                        {{ $riwayat->nilai }}
-                                    </span>
-                                @else
-                                    <span class="badge-ios secondary">Tersembunyi</span>
-                                @endif
-                            </td>
-                            <td><small class="text-muted">{{ $riwayat->waktu_selesai ? $riwayat->waktu_selesai->format('d M Y H:i') : '-' }}</small></td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @else
-                <div class="empty-state">
-                    <i class="bi bi-inbox"></i>
-                    <h5>Belum ada riwayat ujian</h5>
-                    <p>Riwayat ujian yang sudah dikerjakan akan muncul di sini</p>
-                </div>
-            @endif
-        </div>
-    </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        function pad(n) { return String(n).padStart(2, '0'); }
+
+        function tick() {
+            document.querySelectorAll('[data-countdown]').forEach(function (el) {
+                var end = new Date(el.getAttribute('data-end')).getTime();
+                var now = Date.now();
+                var diff = Math.max(0, end - now);
+                var timeEl = el.querySelector('.sd-countdown-time');
+
+                if (diff <= 0) {
+                    timeEl.textContent = 'Selesai';
+                    return;
+                }
+
+                var h = Math.floor(diff / 3600000);
+                var m = Math.floor((diff % 3600000) / 60000);
+                var s = Math.floor((diff % 60000) / 1000);
+                timeEl.textContent = pad(h) + ':' + pad(m) + ':' + pad(s);
+            });
+        }
+
+        tick();
+        setInterval(tick, 1000);
+    })();
+</script>
+@endpush
