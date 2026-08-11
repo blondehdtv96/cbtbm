@@ -22,6 +22,7 @@ Sistem Computer Based Test (CBT) berbasis web untuk Sekolah Menengah Kejuruan (S
 - [API Endpoints](#-api-endpoints)
 - [Troubleshooting](#-troubleshooting)
 - [Kontribusi](#-kontribusi)
+- [Skalabilitas & Deployment Produksi](#-skalabilitas--deployment-produksi-500-concurrent-users)
 - [Lisensi](#-lisensi)
 
 ---
@@ -273,6 +274,8 @@ SESSION_DRIVER=file
 SESSION_LIFETIME=120  # dalam menit
 ```
 
+> Untuk production dengan banyak siswa mengerjakan ujian bersamaan, `SESSION_DRIVER=file` sebaiknya diganti `redis` — lihat [Skalabilitas & Deployment Produksi](#-skalabilitas--deployment-produksi-500-concurrent-users).
+
 ### Cache Configuration
 ```bash
 # Clear cache
@@ -346,9 +349,8 @@ php artisan view:cache
 - id (PK)
 - nama_ujian
 - mapel_id (FK)
-- tanggal_ujian
-- waktu_mulai
-- waktu_selesai
+- tanggal_mulai (datetime)
+- tanggal_selesai
 - durasi_menit
 - jumlah_soal
 - token (5 digit)
@@ -356,7 +358,7 @@ php artisan view:cache
 - acak_opsi (boolean)
 - tampilkan_nilai (boolean)
 - tampilkan_pembahasan (boolean)
-- is_published (boolean)
+- status (enum: draft, publish, berlangsung, selesai)
 - timestamps
 ```
 
@@ -664,12 +666,6 @@ ORDER BY id DESC;
 php check_jawaban.php
 ```
 
-**File bantuan**:
-- `TROUBLESHOOTING_NILAI_0.md`
-- `DEBUG_JAWABAN_NULL.md`
-- `check_jawaban.php`
-- `fix_empty_answers.php`
-
 #### 2. Error 404 pada Save Jawaban
 **Gejala**: POST /cbtbm/public/exam/13/save-jawaban 404
 
@@ -682,10 +678,6 @@ APP_URL=http://127.0.0.1:8000
 
 # Atau gunakan relative URL (sudah diperbaiki di v3.0)
 ```
-
-**File bantuan**:
-- `PERBAIKAN_URL_404.txt`
-- `CARA_FIX_CACHE_404.txt`
 
 #### 3. Error 419 Page Expired
 **Gejala**: Error 419 saat submit atau save jawaban
@@ -705,10 +697,6 @@ SESSION_LIFETIME=120
 <meta name="csrf-token" content="{{ csrf_token() }}">
 ```
 
-**File bantuan**:
-- `PERBAIKAN_ERROR_419.md`
-- `RINGKASAN_PERBAIKAN_419.txt`
-
 #### 4. JavaScript Syntax Error
 **Gejala**: Uncaught SyntaxError atau function not defined
 
@@ -726,10 +714,6 @@ Ctrl + Shift + N
 # 4. Cek versi script di console
 Harus ada: === CBT EXAM SYSTEM v3.0 ===
 ```
-
-**File bantuan**:
-- `FINAL_FIX_SYNTAX_ERROR.txt`
-- `INSTRUKSI_PENTING_CACHE.txt`
 
 #### 5. Anti-Cheat Terlalu Sensitif
 **Gejala**: Auto-submit terlalu cepat
@@ -814,7 +798,17 @@ Kontribusi sangat diterima! Silakan ikuti langkah berikut:
 
 ## 📝 Changelog
 
-### Version 3.0 (Current)
+### Version 3.1 (Current) — Skalabilitas 500+ Concurrent Users
+- ✅ Autosave jawaban jadi 1 query upsert (sebelumnya 2 query + logging berat tiap request)
+- ✅ Cache soal+opsi ujian (Redis) dengan urutan per-siswa yang benar untuk ujian acak
+- ✅ Grading saat submit ujian dibungkus transaction + bulk update (dari puluhan query/siswa jadi segelintir)
+- ✅ Cache warm-up otomatis terjadwal tiap 15 menit
+- ✅ Rate limiting di endpoint login, verify-token, save-jawaban, anti-cheat
+- ✅ Import soal Excel besar (>150 baris) diproses via queue worker di background
+- ✅ Perbaikan bug: query kolom `is_published`/`tanggal_ujian` yang tidak ada di skema, koneksi Redis `queue` yang belum terkonfigurasi
+- ✅ Konfigurasi deployment produksi lengkap (lihat [Skalabilitas & Deployment Produksi](#-skalabilitas--deployment-produksi-500-concurrent-users))
+
+### Version 3.0
 - ✅ Anti-cheat system enabled
 - ✅ Fixed URL routing (relative paths)
 - ✅ Improved auto-save mechanism
@@ -888,55 +882,116 @@ SOFTWARE.
 
 ---
 
-## 🚀 Optimasi untuk 500+ Concurrent Users
+## 🚀 Skalabilitas & Deployment Produksi (500+ Concurrent Users)
 
-Sistem ini sudah dioptimasi untuk menangani 500+ user concurrent. Fitur optimasi meliputi:
+Sistem ini disiapkan untuk menangani ±500 siswa mengerjakan ujian secara bersamaan. Target deployment produksi adalah **VPS Linux (Nginx + PHP-FPM + MySQL + Redis)** — bukan XAMPP. Bagian ini mendokumentasikan semua konfigurasi terkait dan cara memakainya; semua file konfigurasi yang disebut di sini ada di root repository.
 
-### Performance Features
-- ✅ Redis caching (90%+ hit rate)
-- ✅ Queue system dengan 8 workers
-- ✅ Database indexing & connection pooling
-- ✅ PHP-FPM optimization (150 workers)
-- ✅ Nginx optimization dengan FastCGI cache
-- ✅ Rate limiting per endpoint
-- ✅ Real-time monitoring
+### Ringkasan arsitektur
 
-### Quick Start Optimization
+| Komponen | Default (dev/XAMPP) | Production | Kenapa |
+|---|---|---|---|
+| Cache | `file` | **Redis** (DB 1) | Cache soal+opsi ujian dibaca berulang oleh ratusan siswa sekaligus; file cache jadi bottleneck I/O disk |
+| Session | `file` | **Redis** (DB 2) | File session dengan ratusan siswa aktif bersamaan menimbulkan lock/I/O disk berlebih |
+| Queue | `database` | **Redis** (DB 3) | Untuk job background (lihat [Queue Worker](#queue-worker-supervisor)) |
+| Web server | Apache (XAMPP) | **Nginx + PHP-FPM** | PHP-FPM bisa di-scale jumlah worker-nya, lebih efisien untuk request bervolume tinggi dibanding Apache mod_php |
+
+Database Redis sengaja dipisah per keperluan (`REDIS_DB=0` default/unused, `REDIS_CACHE_DB=1`, `REDIS_SESSION_DB=2`, `REDIS_QUEUE_DB=3`) supaya cache, session, dan queue tidak saling menimpa atau ter-evict oleh `maxmemory-policy` satu sama lain. Konfigurasi koneksinya ada di `config/database.php` (blok `redis`).
+
+### Apa yang disimpan synchronous vs lewat queue worker
+
+- **Autosave jawaban ujian** (`ExamController::saveJawaban`) — **tetap synchronous** langsung ke MySQL (1 query upsert). Ini keputusan sadar: endpoint ini paling sering dipanggil (tiap beberapa detik oleh tiap siswa), tapi satu query upsert amat ringan bagi MySQL, dan menaruhnya di queue justru berisiko jawaban terakhir siswa belum sempat diproses worker saat mereka klik Submit.
+- **Import soal Excel** (`ImportBankSoalController::import`) — file dengan **>150 baris valid** diproses di background lewat `ImportBankSoalJob` (redis queue), supaya request HTTP admin tidak menunggu lama / berisiko timeout. File kecil (kasus umum) tetap diproses instan seperti biasa.
+- **Cache warm-up** (`php artisan cache:warmup`) — dijadwalkan otomatis tiap 15 menit lewat Laravel Scheduler (`app/Console/Kernel.php`) supaya cache ujian yang akan/sedang berlangsung selalu hangat.
+
+### File konfigurasi (root repository)
+
+| File | Fungsi | Taruh di |
+|---|---|---|
+| `.env.production` | Template environment produksi (Redis untuk cache/session/queue, `APP_DEBUG=false`, dll) | `cp .env.production .env` di server |
+| `mysql-optimization.cnf` | Tuning MySQL untuk 500+ koneksi (buffer pool, connection limit, slow query log) | `/etc/mysql/conf.d/` |
+| `redis.conf` | Tuning Redis (maxmemory, persistence, dll) | `/etc/redis/redis.conf` |
+| `php-fpm-optimization.conf` | Pool PHP-FPM (150 child process, OPcache, resource limit) | `/etc/php/8.x/fpm/pool.d/www.conf` |
+| `nginx-optimization.conf` | Virtual host Nginx (rate limiting, FastCGI cache, gzip) | `/etc/nginx/nginx.conf` |
+| `supervisor-queue-worker.conf` | Menjaga `queue:work` tetap jalan sebagai service | `/etc/supervisor/conf.d/` |
+| `install-optimization.sh` | Script bantu instalasi paket-paket di atas | dijalankan manual di server |
+| `load-test.sh` | Load testing dengan Apache Bench / Siege | dijalankan manual untuk uji kapasitas |
+
+> Semua file di atas berisi placeholder (`/var/www/cbt-smk`, `cbt.yourschool.com`, `www-data`, dll) yang **wajib disesuaikan** dengan path/domain/user server Anda sebelum dipakai.
+
+### Langkah deploy ke VPS
 
 ```bash
-# Automatic installation
-sudo bash install-optimization.sh
+# 1. Setup aplikasi
+git clone <repo-url> /var/www/cbt-smk && cd /var/www/cbt-smk
+composer install --no-dev --optimize-autoloader
+cp .env.production .env
+php artisan key:generate
+# Edit .env: isi DB_PASSWORD, REDIS_PASSWORD, APP_URL sesuai domain
 
-# Manual check
-php artisan system:monitor
+# 2. Install & konfigurasi MySQL, Redis, Nginx, PHP-FPM
+sudo cp mysql-optimization.cnf /etc/mysql/conf.d/optimization.cnf && sudo systemctl restart mysql
+sudo cp redis.conf /etc/redis/redis.conf && sudo systemctl restart redis-server
+sudo cp php-fpm-optimization.conf /etc/php/8.2/fpm/pool.d/www.conf && sudo systemctl restart php8.2-fpm
+sudo cp nginx-optimization.conf /etc/nginx/nginx.conf && sudo nginx -t && sudo systemctl restart nginx
+
+# 3. Migrasi & optimasi Laravel
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# 4. Queue worker (Supervisor)
+sudo cp supervisor-queue-worker.conf /etc/supervisor/conf.d/cbt-queue-worker.conf
+sudo supervisorctl reread && sudo supervisorctl update && sudo supervisorctl start cbt-queue-worker:*
+
+# 5. Scheduler (untuk cache:warmup otomatis) — tambahkan ke crontab:
+# * * * * * cd /var/www/cbt-smk && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-### Documentation
-- 📖 [Full Optimization Guide](OPTIMASI_500_USER.md)
-- ⚡ [Quick Start Guide](QUICK_START_OPTIMIZATION.md)
-- 📋 [Optimization Summary](OPTIMIZATION_SUMMARY.md)
+### Queue Worker (Supervisor)
 
-### Performance Targets
+`supervisor-queue-worker.conf` menjalankan `php artisan queue:work redis --queue=default,low` dengan 4 process paralel, auto-restart bila crash. Cek status worker:
+```bash
+sudo supervisorctl status cbt-queue-worker:*
+php artisan queue:failed          # lihat job yang gagal
+php artisan queue:retry all       # retry semua job gagal
 ```
-✅ Concurrent Users: 500+
-✅ Response Time: < 200ms (save answer)
-✅ Throughput: 100+ requests/second
-✅ Cache Hit Rate: > 90%
-✅ Uptime: > 99.9%
+
+### Rate Limiting
+
+Middleware `App\Http\Middleware\ThrottleRequests` (alias `throttle.custom`) aktif di endpoint yang rawan disalahgunakan/dibanjiri, per kombinasi user+IP:
+
+| Route | Limit |
+|---|---|
+| `POST /login` | 5x / menit |
+| `POST /exam/{ujian}/verify-token` | 10x / menit |
+| `POST /exam/{ujian}/save-jawaban` | 120x / menit |
+| `POST /exam/{ujian}/anti-cheat` | 30x / menit |
+
+Nginx (`nginx-optimization.conf`) juga punya rate limiting di layer web server sebagai lapisan pertahanan tambahan (`limit_req_zone` untuk `login` dan `save`).
+
+### Monitoring
+
+```bash
+# Live metrics: koneksi DB, memory Redis, panjang antrian, jumlah siswa aktif
+php artisan system:monitor --interval=60
 ```
 
 ### Load Testing
+
 ```bash
-# Run load test
 chmod +x load-test.sh
 ./load-test.sh
 
-# Apache Bench
+# Manual:
 ab -n 1000 -c 100 http://127.0.0.1:8000/
-
-# Siege
 siege -c 500 -t 60S http://127.0.0.1:8000/
 ```
+
+### Catatan penting
+
+- Development lokal (XAMPP) **tidak perlu** Redis/OPcache — `.env` biasa (`CACHE_DRIVER=file`, dll) sudah cukup untuk development. Redis/PHP-FPM/Nginx hanya untuk server produksi.
+- Kalau `QUEUE_CONNECTION=redis` dipakai tanpa Redis server jalan/terkonfigurasi, dispatch job akan error koneksi — cek `config/database.php` blok `redis.queue` sudah ada isinya (bukan hanya `default`/`cache`) sebelum mengaktifkan Redis queue.
 
 ---
 
