@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
+    /**
+     * Siswa login page (NISN + password).
+     */
     public function showLoginForm()
     {
         if (Auth::check()) {
@@ -23,68 +26,76 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $loginType = $request->input('login_type', 'email');
+        $request->validate([
+            'nisn' => 'required|string',
+            'password' => 'required',
+        ]);
 
-        // === LOGIN SISWA VIA NISN ===
-        if ($loginType === 'nisn') {
-            $request->validate([
-                'nisn' => 'required|string',
-                'password' => 'required',
-            ]);
+        $siswa = Siswa::where('nisn', $request->nisn)->first();
 
-            $siswa = Siswa::where('nisn', $request->nisn)->first();
-
-            if (!$siswa) {
-                return back()->withErrors([
-                    'nisn' => 'NISN tidak ditemukan dalam sistem.',
-                ])->withInput($request->only('nisn'));
-            }
-
-            $user = $siswa->user;
-
-            if (!$user) {
-                return back()->withErrors([
-                    'nisn' => 'Akun untuk NISN ini tidak ditemukan.',
-                ])->withInput($request->only('nisn'));
-            }
-
-            if ($user->isLocked()) {
-                $minutes = $user->locked_until->diffInMinutes(now());
-                return back()->withErrors([
-                    'nisn' => "Akun dikunci. Coba lagi dalam {$minutes} menit.",
-                ])->withInput($request->only('nisn'));
-            }
-
-            if (Hash::check($request->password, $user->password)) {
-                if (!$user->is_active) {
-                    return back()->withErrors([
-                        'nisn' => 'Akun Anda tidak aktif. Hubungi administrator.',
-                    ])->withInput($request->only('nisn'));
-                }
-
-                Auth::login($user, $request->filled('remember'));
-                $request->session()->regenerate();
-
-                $user->update([
-                    'login_attempts' => 0,
-                    'locked_until' => null,
-                    'last_login' => now(),
-                ]);
-
-                ActivityLog::log('login', 'auth', 'Siswa login via NISN');
-
-                return $this->redirectByRole($user);
-            }
-
-            // Failed login - increment attempts
-            $this->handleFailedLogin($user);
-
+        if (!$siswa) {
             return back()->withErrors([
-                'nisn' => 'NISN atau password salah.',
+                'nisn' => 'NISN tidak ditemukan dalam sistem.',
             ])->withInput($request->only('nisn'));
         }
 
-        // === LOGIN VIA EMAIL (Admin/Guru/Superadmin) ===
+        $user = $siswa->user;
+
+        if (!$user) {
+            return back()->withErrors([
+                'nisn' => 'Akun untuk NISN ini tidak ditemukan.',
+            ])->withInput($request->only('nisn'));
+        }
+
+        if ($user->isLocked()) {
+            $minutes = $user->locked_until->diffInMinutes(now());
+            return back()->withErrors([
+                'nisn' => "Akun dikunci. Coba lagi dalam {$minutes} menit.",
+            ])->withInput($request->only('nisn'));
+        }
+
+        if (Hash::check($request->password, $user->password)) {
+            if (!$user->is_active) {
+                return back()->withErrors([
+                    'nisn' => 'Akun Anda tidak aktif. Hubungi administrator.',
+                ])->withInput($request->only('nisn'));
+            }
+
+            Auth::login($user, $request->filled('remember'));
+            $request->session()->regenerate();
+
+            $user->update([
+                'login_attempts' => 0,
+                'locked_until' => null,
+                'last_login' => now(),
+            ]);
+
+            ActivityLog::log('login', 'auth', 'Siswa login via NISN');
+
+            return $this->redirectByRole($user);
+        }
+
+        $this->handleFailedLogin($user);
+
+        return back()->withErrors([
+            'nisn' => 'NISN atau password salah.',
+        ])->withInput($request->only('nisn'));
+    }
+
+    /**
+     * Staff (Guru/Admin/Superadmin) login page — email + password.
+     * Not linked from the siswa page; only reachable via direct URL.
+     */
+    public function showStaffLoginForm()
+    {
+        if (Auth::check()) {
+            return $this->redirectByRole(Auth::user());
+        }
+        return view('auth.staff-login');
+    }
+
+    public function staffLogin(Request $request)
+    {
         $request->validate([
             'email' => 'required|email',
             'password' => 'required',
@@ -104,6 +115,19 @@ class LoginController extends Controller
 
             $user = Auth::user();
 
+            // This page is staff-only — a siswa account with valid credentials
+            // still doesn't belong here. Not treated as a failed attempt since
+            // the credentials themselves were correct.
+            if (!in_array($user->role, ['guru', 'admin', 'superadmin'])) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()->withErrors([
+                    'email' => 'Halaman ini khusus untuk Guru dan Admin.',
+                ])->withInput($request->only('email'));
+            }
+
             if (!$user->is_active) {
                 Auth::logout();
                 return back()->withErrors([
@@ -117,12 +141,11 @@ class LoginController extends Controller
                 'last_login' => now(),
             ]);
 
-            ActivityLog::log('login', 'auth', 'User logged in via email');
+            ActivityLog::log('login', 'auth', 'Staff login via email');
 
             return $this->redirectByRole($user);
         }
 
-        // Failed login
         if ($user) {
             $this->handleFailedLogin($user);
         }

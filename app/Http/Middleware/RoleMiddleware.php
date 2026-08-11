@@ -9,8 +9,12 @@ class RoleMiddleware
 {
     public function handle(Request $request, Closure $next, ...$roles)
     {
+        // Routes gated to 'siswa' bounce to the siswa login page; every other
+        // role (guru/admin/superadmin) bounces to the staff login page.
+        $loginRoute = in_array('siswa', $roles) ? 'login' : 'staff.login';
+
         if (!auth()->check()) {
-            return redirect()->route('login');
+            return redirect()->route($loginRoute);
         }
 
         if (!in_array(auth()->user()->role, $roles)) {
@@ -19,13 +23,13 @@ class RoleMiddleware
 
         if (auth()->user()->isLocked()) {
             auth()->logout();
-            return redirect()->route('login')
+            return redirect()->route($loginRoute)
                 ->withErrors(['email' => 'Akun Anda dikunci sementara. Coba lagi nanti.']);
         }
 
         if (!auth()->user()->is_active) {
             auth()->logout();
-            return redirect()->route('login')
+            return redirect()->route($loginRoute)
                 ->withErrors(['email' => 'Akun Anda tidak aktif. Hubungi administrator.']);
         }
 

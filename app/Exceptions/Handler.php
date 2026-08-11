@@ -46,8 +46,10 @@ class Handler extends ExceptionHandler
                 return response()->view('exam.anti-cheat-violation', [], 419);
             }
             
-            // For other routes, redirect to login
-            return redirect()->route('login')
+            // For other routes, redirect to the right login page (siswa vs staff)
+            $loginRoute = $request->is('siswa*', 'exam*', 'login', 'login/*') ? 'login' : 'staff.login';
+
+            return redirect()->route($loginRoute)
                 ->with('error', 'Sesi Anda telah berakhir. Silakan login kembali.');
         }
 

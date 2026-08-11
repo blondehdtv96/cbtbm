@@ -22,6 +22,11 @@ use App\Http\Controllers\AntiCheatController;
 Route::get('/', [LoginController::class , 'showLoginForm']);
 Route::get('/login', [LoginController::class , 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class , 'login'])->middleware('throttle.custom:5,1')->name('login.process');
+
+// Staff (Guru/Admin) login — deliberately not linked from the siswa page, direct URL only.
+Route::get('/staff/login', [LoginController::class , 'showStaffLoginForm'])->name('staff.login');
+Route::post('/staff/login', [LoginController::class , 'staffLogin'])->middleware('throttle.custom:5,1')->name('staff.login.process');
+
 Route::post('/logout', [LoginController::class , 'logout'])->name('logout');
 
 // Super Admin Routes

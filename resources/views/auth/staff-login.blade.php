@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Siswa - {{ app_name() }}</title>
-    <meta name="description" content="Login siswa ke sistem {{ app_name() }} - {{ setting('app_tagline', 'Sistem Ujian Online') }}">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Login Staff - {{ app_name() }}</title>
+    <meta name="description" content="Login Guru & Admin ke sistem {{ app_name() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
@@ -30,7 +31,7 @@
             background: #ffffff;
         }
 
-        /* Left Panel - Branding (animated blue gradient) */
+        /* Right Panel - Branding (form comes first on this page, on purpose) */
         .login-branding {
             flex: 1;
             position: relative;
@@ -40,9 +41,10 @@
             align-items: center;
             padding: 60px;
             overflow: hidden;
-            background: linear-gradient(120deg, #0b2e63 0%, #0f3a82 25%, #1d4ed8 55%, #2563eb 80%, #3b82f6 100%);
+            order: 2;
+            background: linear-gradient(135deg, #05122b 0%, #0b2e63 30%, #123a76 55%, #1d4ed8 85%, #2563eb 100%);
             background-size: 220% 220%;
-            animation: gradientShift 16s ease-in-out infinite;
+            animation: gradientShift 18s ease-in-out infinite;
         }
 
         @keyframes gradientShift {
@@ -59,45 +61,45 @@
         }
 
         .blob-1 {
-            width: 480px;
-            height: 480px;
-            background: rgba(255, 255, 255, 0.06);
-            top: -160px;
-            right: -140px;
-            animation: floatBlob1 14s ease-in-out infinite;
+            width: 460px;
+            height: 460px;
+            background: rgba(255, 255, 255, 0.05);
+            top: -140px;
+            left: -120px;
+            animation: floatBlob1 15s ease-in-out infinite;
         }
 
         .blob-2 {
-            width: 340px;
-            height: 340px;
-            background: rgba(96, 165, 250, 0.18);
-            bottom: -100px;
-            left: -90px;
-            animation: floatBlob2 18s ease-in-out infinite;
+            width: 320px;
+            height: 320px;
+            background: rgba(96, 165, 250, 0.16);
+            bottom: -90px;
+            right: -80px;
+            animation: floatBlob2 19s ease-in-out infinite;
         }
 
         .blob-3 {
-            width: 220px;
-            height: 220px;
-            background: rgba(255, 255, 255, 0.05);
-            top: 45%;
-            left: 8%;
-            animation: floatBlob3 11s ease-in-out infinite;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.045);
+            top: 40%;
+            right: 10%;
+            animation: floatBlob3 12s ease-in-out infinite;
         }
 
         @keyframes floatBlob1 {
             0%, 100% { transform: translate(0, 0) scale(1); }
-            50%      { transform: translate(-36px, 32px) scale(1.12); }
+            50%      { transform: translate(32px, 28px) scale(1.1); }
         }
 
         @keyframes floatBlob2 {
             0%, 100% { transform: translate(0, 0) scale(1); }
-            50%      { transform: translate(30px, -26px) scale(1.08); }
+            50%      { transform: translate(-28px, -24px) scale(1.08); }
         }
 
         @keyframes floatBlob3 {
             0%, 100% { transform: translate(0, 0); }
-            50%      { transform: translate(18px, -22px); }
+            50%      { transform: translate(-16px, 20px); }
         }
 
         .branding-content {
@@ -127,12 +129,12 @@
         }
 
         .branding-icon i {
-            font-size: 40px;
+            font-size: 38px;
             color: white;
         }
 
         .branding-title {
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 900;
             color: white;
             letter-spacing: -0.04em;
@@ -140,7 +142,7 @@
         }
 
         .branding-subtitle {
-            font-size: 16px;
+            font-size: 15px;
             color: rgba(255, 255, 255, 0.75);
             font-weight: 400;
             margin-bottom: 40px;
@@ -176,9 +178,10 @@
             font-weight: 500;
         }
 
-        /* Right Panel - Form */
+        /* Left Panel - Form */
         .login-form-section {
             width: 520px;
+            order: 1;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -352,7 +355,7 @@
             width: 100%;
             padding: 14px;
             border-radius: 12px;
-            background: linear-gradient(135deg, #1d4ed8, #2563eb 60%, #3b82f6);
+            background: linear-gradient(135deg, #123a76, #1d4ed8 55%, #2563eb);
             background-size: 160% 160%;
             color: white;
             border: none;
@@ -370,13 +373,13 @@
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.32);
+            box-shadow: 0 10px 24px rgba(29, 78, 216, 0.32);
             background-position: 100% 0;
         }
 
         .btn-login:active {
             transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+            box-shadow: 0 2px 8px rgba(29, 78, 216, 0.2);
         }
 
         /* Footer */
@@ -407,8 +410,13 @@
             }
 
             .login-branding {
+                order: 1;
                 padding: 36px 28px 28px;
                 min-height: auto;
+            }
+
+            .login-form-section {
+                order: 2;
             }
 
             .branding-icon {
@@ -463,47 +471,13 @@
 </head>
 <body>
     <div class="login-wrapper">
-        {{-- Left Panel: Branding --}}
-        <div class="login-branding">
-            <div class="blob blob-1"></div>
-            <div class="blob blob-2"></div>
-            <div class="blob blob-3"></div>
-
-            <div class="branding-content">
-                <div class="branding-icon">
-                    @if(school_logo())
-                        <img src="{{ school_logo() }}" alt="Logo" style="width: 80px; height: 80px; object-fit: contain;">
-                    @else
-                        <i class="bi bi-mortarboard-fill"></i>
-                    @endif
-                </div>
-                <h1 class="branding-title">{{ app_name() }}</h1>
-                <p class="branding-subtitle">{{ setting('app_description', 'Sistem Ujian Online Modern untuk Sekolah Menengah Kejuruan') }}</p>
-
-                <div class="branding-features">
-                    <div class="branding-feature">
-                        <i class="bi bi-shield-check"></i>
-                        <span>Ujian aman dengan anti-cheat system</span>
-                    </div>
-                    <div class="branding-feature">
-                        <i class="bi bi-bar-chart-line"></i>
-                        <span>Hasil & analisis nilai secara real-time</span>
-                    </div>
-                    <div class="branding-feature">
-                        <i class="bi bi-phone"></i>
-                        <span>Akses dari perangkat manapun</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Right Panel: Form --}}
+        {{-- Form Panel --}}
         <div class="login-form-section">
             <div class="login-form-inner">
                 <div class="form-header">
-                    <span class="form-badge"><i class="bi bi-person-fill"></i> Portal Siswa</span>
-                    <h2>Selamat Datang</h2>
-                    <p>Masuk dengan NISN untuk mengikuti ujian</p>
+                    <span class="form-badge"><i class="bi bi-shield-lock-fill"></i> Portal Staff</span>
+                    <h2>Login Guru & Admin</h2>
+                    <p>Masuk dengan email dan password akun Anda</p>
                 </div>
 
                 @if($errors->any())
@@ -520,20 +494,19 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('login.process') }}">
+                <form method="POST" action="{{ route('staff.login.process') }}">
                     @csrf
                     <div class="form-group">
-                        <label class="form-label" for="nisn">NISN</label>
-                        <input type="text" class="form-input" id="nisn" name="nisn"
-                               value="{{ old('nisn') }}"
-                               placeholder="Masukkan NISN Anda" inputmode="numeric"
-                               pattern="[0-9]*" maxlength="20" autocomplete="username" autofocus>
+                        <label class="form-label" for="email">Email</label>
+                        <input type="email" class="form-input" id="email" name="email"
+                               value="{{ old('email') }}"
+                               placeholder="Masukkan email Anda" autocomplete="username" autofocus>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="password">Password</label>
                         <div class="input-password-wrap">
                             <input type="password" class="form-input" id="password" name="password"
-                                   placeholder="Masukkan password dari admin" autocomplete="current-password">
+                                   placeholder="Masukkan password" autocomplete="current-password">
                             <button type="button" class="btn-toggle-password" onclick="togglePassword('password', this)">
                                 <i class="bi bi-eye"></i>
                             </button>
@@ -545,12 +518,42 @@
                     </label>
                     <button type="submit" class="btn-login">
                         <i class="bi bi-box-arrow-in-right"></i>
-                        Masuk Sebagai Siswa
+                        Masuk
                     </button>
                 </form>
 
                 <div class="login-footer">
                     © {{ date('Y') }} {{ app_name() }}. All rights reserved.
+                </div>
+            </div>
+        </div>
+
+        {{-- Branding Panel --}}
+        <div class="login-branding">
+            <div class="blob blob-1"></div>
+            <div class="blob blob-2"></div>
+            <div class="blob blob-3"></div>
+
+            <div class="branding-content">
+                <div class="branding-icon">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+                <h1 class="branding-title">{{ app_name() }}</h1>
+                <p class="branding-subtitle">Panel internal untuk Guru dan Admin — kelola ujian, bank soal, dan data siswa.</p>
+
+                <div class="branding-features">
+                    <div class="branding-feature">
+                        <i class="bi bi-journal-check"></i>
+                        <span>Kelola bank soal & ujian</span>
+                    </div>
+                    <div class="branding-feature">
+                        <i class="bi bi-activity"></i>
+                        <span>Monitoring ujian real-time</span>
+                    </div>
+                    <div class="branding-feature">
+                        <i class="bi bi-clipboard-data"></i>
+                        <span>Rekap & analisis nilai otomatis</span>
+                    </div>
                 </div>
             </div>
         </div>
