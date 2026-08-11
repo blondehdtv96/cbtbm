@@ -6,6 +6,23 @@
 
 @section('content')
 <div class="fade-in">
+    @if($processing)
+    <meta http-equiv="refresh" content="3">
+    {{-- Processing Banner --}}
+    <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(14, 165, 233, 0.08)); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 18px; padding: 28px 32px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 56px; height: 56px; border-radius: 16px; background: linear-gradient(135deg, #6366f1, #0ea5e9); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <span class="spinner-border spinner-border-sm" style="color: #fff;"></span>
+            </div>
+            <div>
+                <div style="font-size: 20px; font-weight: 800; color: #3730a3;">Sedang Memproses Import...</div>
+                <div style="font-size: 14px; color: #4338ca; font-weight: 500; margin-top: 4px;">
+                    File besar diproses di background. Halaman ini akan otomatis refresh.
+                </div>
+            </div>
+        </div>
+    </div>
+    @else
     {{-- Success Banner --}}
     <div style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.08), rgba(16, 185, 129, 0.08)); border: 1px solid rgba(34, 197, 94, 0.2); border-radius: 18px; padding: 28px 32px; margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 16px;">
@@ -36,7 +53,6 @@
                         <th>Pertanyaan</th>
                         <th>Mapel</th>
                         <th>Tipe</th>
-                        <th>Level</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -47,11 +63,6 @@
                         <td style="font-weight: 500;">{{ $soal['pertanyaan'] }}</td>
                         <td><span class="badge-ios primary">{{ $soal['mapel'] }}</span></td>
                         <td><span class="badge-ios {{ $soal['tipe_soal'] === 'essay' ? 'info' : 'purple' }}">{{ strtoupper($soal['tipe_soal']) }}</span></td>
-                        <td>
-                            <span class="badge-ios {{ $soal['tingkat'] == 'mudah' ? 'success' : ($soal['tingkat'] == 'sedang' ? 'warning' : 'danger') }}">
-                                {{ ucfirst($soal['tingkat']) }}
-                            </span>
-                        </td>
                     </tr>
                     @endforeach
                 </tbody>
@@ -68,5 +79,6 @@
             <i class="bi bi-cloud-arrow-up me-1"></i> Import Lagi
         </a>
     </div>
+    @endif
 </div>
 @endsection

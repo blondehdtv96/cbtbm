@@ -325,9 +325,7 @@ php artisan view:cache
 - mapel_id (FK)
 - pertanyaan (text)
 - tipe_soal (enum: pg, pg_kompleks, essay)
-- tingkat_kesulitan (enum: mudah, sedang, sulit)
 - bobot_nilai (decimal)
-- pembahasan (text)
 - gambar_soal
 - digunakan_count
 - timestamps

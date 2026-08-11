@@ -68,22 +68,19 @@ class WarmUpCache extends Command
     {
         $this->info('📚 Warming up active exams...');
 
-        $activeUjians = Ujian::with(['mapel', 'bankSoals.opsiJawabans'])
-            ->where('is_published', true)
-            ->where('tanggal_ujian', '>=', now()->subDays(1))
-            ->where('tanggal_ujian', '<=', now()->addDays(7))
+        $activeUjians = Ujian::whereIn('status', ['publish', 'berlangsung'])
+            ->where('tanggal_mulai', '>=', now()->subDays(1))
+            ->where('tanggal_mulai', '<=', now()->addDays(7))
             ->get();
 
         $bar = $this->output->createProgressBar($activeUjians->count());
         $bar->start();
 
         foreach ($activeUjians as $ujian) {
-            // Cache ujian data
-            Cache::put("ujian:{$ujian->id}", $ujian, 3600);
-
-            // Cache soal order
-            $soalIds = $ujian->bankSoals->pluck('id')->toArray();
-            Cache::put("ujian:{$ujian->id}:soals", $ujian->bankSoals, 3600);
+            // Reuse CacheService so the cache shape/key matches exactly what
+            // ExamController reads at request time.
+            $this->cacheService->cacheUjian($ujian->id);
+            $this->cacheService->cacheSoalUjian($ujian->id);
 
             $bar->advance();
         }

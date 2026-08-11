@@ -49,9 +49,6 @@ class BankSoalController extends Controller
         if ($request->filled('tipe_soal')) {
             $query->where('tipe_soal', $request->tipe_soal);
         }
-        if ($request->filled('tingkat_kesulitan')) {
-            $query->where('tingkat_kesulitan', $request->tingkat_kesulitan);
-        }
         if ($request->filled('search')) {
             $query->where('pertanyaan', 'like', "%{$request->search}%");
         }
@@ -84,7 +81,6 @@ class BankSoalController extends Controller
             'tipe_soal' => 'required|in:pg,essay,pg_kompleks,menjodohkan',
             'bobot_nilai' => 'required|integer|min:1',
             'pertanyaan' => 'required|string',
-            'pembahasan' => 'nullable|string',
             'gambar_soal' => 'nullable|image|max:2048',
         ]);
 
@@ -93,7 +89,7 @@ class BankSoalController extends Controller
             return back()->with('error', 'Profil guru tidak ditemukan.');
         }
 
-        $data = $request->only(['mapel_id', 'tipe_soal', 'bobot_nilai', 'pertanyaan', 'pembahasan', 'kategori', 'tag']);
+        $data = $request->only(['mapel_id', 'tipe_soal', 'bobot_nilai', 'pertanyaan']);
         $data['guru_id'] = $guru->id;
         $data['status'] = 'aktif';
 
@@ -150,7 +146,7 @@ class BankSoalController extends Controller
             'pertanyaan' => 'required|string',
         ]);
 
-        $data = $request->only(['mapel_id', 'tipe_soal', 'bobot_nilai', 'pertanyaan', 'pembahasan', 'kategori', 'tag', 'status']);
+        $data = $request->only(['mapel_id', 'tipe_soal', 'bobot_nilai', 'pertanyaan', 'status']);
 
         if ($request->hasFile('gambar_soal')) {
             $data['gambar_soal'] = $request->file('gambar_soal')->store('soal-images', 'public');

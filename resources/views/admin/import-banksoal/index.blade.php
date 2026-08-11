@@ -133,10 +133,6 @@
                         <strong style="color: #6366f1;">Tipe Soal:</strong>
                         <code>pg</code> <code>essay</code> <code>pg_kompleks</code> <code>menjodohkan</code>
                     </div>
-                    <div class="mb-2">
-                        <strong style="color: #6366f1;">Tingkat Kesulitan:</strong>
-                        <code>mudah</code> <code>sedang</code> <code>sulit</code>
-                    </div>
                     <div>
                         <strong style="color: #6366f1;">Jawaban Benar:</strong>
                         <code>A</code> <code>B</code> <code>C</code> <code>D</code> <code>E</code>

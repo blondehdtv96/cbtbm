@@ -69,7 +69,7 @@ echo "\n=== MIGRATION COMPATIBILITY CHECK ===\n\n";
 $checks = [
     'jawaban_siswas' => ['peserta_ujian_id', 'bank_soal_id', 'is_correct', 'created_at'],
     'peserta_ujians' => ['ujian_id', 'siswa_id', 'status', 'waktu_mulai'],
-    'bank_soals' => ['mapel_id', 'tipe_soal', 'tingkat_kesulitan', 'digunakan_count'],
+    'bank_soals' => ['mapel_id', 'tipe_soal', 'digunakan_count'],
     'opsi_jawabans' => ['bank_soal_id', 'is_correct'],
     'ujians' => ['mapel_id', 'is_published', 'tanggal_ujian'],
     'users' => ['role', 'is_active'],

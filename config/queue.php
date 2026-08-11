@@ -43,16 +43,6 @@ return [
             'timeout' => 60,
         ],
 
-        // High priority queue for critical operations
-        'redis-high' => [
-            'driver' => 'redis',
-            'connection' => 'queue',
-            'queue' => 'high',
-            'retry_after' => 60,
-            'block_for' => null,
-            'after_commit' => false,
-        ],
-
         // Low priority queue for background tasks
         'redis-low' => [
             'driver' => 'redis',

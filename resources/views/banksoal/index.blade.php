@@ -185,7 +185,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-8">
                             <label class="form-label-ios">Tipe Soal <span style="color:#ef4444;">*</span></label>
                             <select name="tipe_soal" class="form-select-ios w-100" id="modalTipeSoal" required onchange="toggleModalOptions()">
                                 <option value="pg">Pilihan Ganda</option>
@@ -194,29 +194,13 @@
                                 <option value="menjodohkan">Menjodohkan</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label-ios">Tingkat Kesulitan <span style="color:#ef4444;">*</span></label>
-                            <select name="tingkat_kesulitan" class="form-select-ios w-100" required>
-                                <option value="mudah">Mudah</option>
-                                <option value="sedang" selected>Sedang</option>
-                                <option value="sulit">Sulit</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-3">
+                        <div class="col-md-6">
                             <label class="form-label-ios">Bobot Nilai <span style="color:#ef4444;">*</span></label>
                             <input type="number" name="bobot_nilai" class="form-control-ios w-100" value="1" min="1" required>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label-ios">Kategori</label>
-                            <input type="text" name="kategori" class="form-control-ios w-100" placeholder="Opsional">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label-ios">Tag</label>
-                            <input type="text" name="tag" class="form-control-ios w-100" placeholder="Opsional">
-                        </div>
-                        <div class="col-md-3">
+                        <div class="col-md-6">
                             <label class="form-label-ios">Gambar Soal</label>
                             <input type="file" name="gambar_soal" class="form-control-ios w-100" accept="image/*" style="font-size: 12px;">
                         </div>
@@ -238,10 +222,6 @@
                             </label>
                         </div>
                         @endforeach
-                    </div>
-                    <div class="mt-3">
-                        <label class="form-label-ios">Pembahasan</label>
-                        <textarea name="pembahasan" class="form-control-ios w-100" rows="3" placeholder="Penjelasan jawaban (opsional)"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid #f1f5f9; padding:16px 28px; background:#fafbfc;">

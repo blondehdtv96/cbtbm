@@ -7,11 +7,20 @@ use App\Models\PesertaUjian;
 use App\Models\JawabanSiswa;
 use App\Models\BankSoal;
 use App\Models\ActivityLog;
+use App\Services\CacheService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ExamController extends Controller
 {
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
+    {
+        $this->cacheService = $cacheService;
+    }
+
     /**
      * Show token verification page before starting exam
      */
@@ -154,14 +163,14 @@ class ExamController extends Controller
             return $this->submitExam($ujian, $peserta);
         }
 
-        // Get ordered soal
+        // Get ordered soal — soal+opsi content is identical for every peserta of this
+        // ujian and doesn't change while the exam is running, so it's cached; per-peserta
+        // ordering (random per siswa when metode_soal=random) is applied after the cache read.
         $soalOrder = $peserta->getSoalOrderArray();
-        $soals = BankSoal::with('opsiJawabans')
-            ->whereIn('id', $soalOrder)
-            ->get()
-            ->sortBy(function ($soal) use ($soalOrder) {
-            return array_search($soal->id, $soalOrder);
-        })
+        $soalById = $this->cacheService->cacheSoalUjian($ujian->id);
+        $soals = collect($soalOrder)
+            ->map(fn($id) => $soalById->get($id))
+            ->filter()
             ->values();
 
         // Shuffle options if enabled
@@ -191,94 +200,58 @@ class ExamController extends Controller
      */
     public function saveJawaban(Request $request, Ujian $ujian)
     {
+        $request->validate([
+            'bank_soal_id' => 'required|integer|exists:bank_soals,id',
+            'jawaban' => 'nullable|string',
+            'is_ragu' => 'nullable|boolean',
+        ]);
+
+        $siswa = auth()->user()->siswa;
+        $peserta = PesertaUjian::where('ujian_id', $ujian->id)
+            ->where('siswa_id', $siswa->id)
+            ->where('status', 'sedang')
+            ->first();
+
+        if (!$peserta) {
+            return response()->json(['error' => 'Sesi tidak valid'], 403);
+        }
+
+        $jawabanValue = $request->jawaban;
+        $isRagu = $request->boolean('is_ragu');
+
         try {
-            $siswa = auth()->user()->siswa;
-            $peserta = PesertaUjian::where('ujian_id', $ujian->id)
-                ->where('siswa_id', $siswa->id)
-                ->where('status', 'sedang')
-                ->first();
-
-            if (!$peserta) {
-                \Log::warning('Save jawaban: Peserta not found or not active', [
-                    'ujian_id' => $ujian->id,
-                    'user_id' => auth()->id(),
-                ]);
-                return response()->json(['error' => 'Sesi tidak valid'], 403);
-            }
-
-            // Log request
-            \Log::info('Save jawaban request', [
-                'peserta_id' => $peserta->id,
-                'bank_soal_id' => $request->bank_soal_id,
-                'jawaban' => $request->jawaban,
-                'is_ragu' => $request->is_ragu,
-            ]);
-
-            // Validasi input
-            $request->validate([
-                'bank_soal_id' => 'required|integer|exists:bank_soals,id',
-                'jawaban' => 'nullable|string',
-                'is_ragu' => 'nullable|boolean',
-            ]);
-
-            // Pastikan jawaban tidak null jika ada nilai
-            $jawabanValue = $request->jawaban;
-            if ($jawabanValue === null || $jawabanValue === '') {
-                \Log::warning('Empty jawaban received', [
-                    'peserta_id' => $peserta->id,
-                    'bank_soal_id' => $request->bank_soal_id,
-                ]);
-            }
-
-            $jawaban = JawabanSiswa::updateOrCreate(
-                [
+            // Single upsert query instead of updateOrCreate's SELECT+INSERT/UPDATE —
+            // this endpoint is called every few seconds by every siswa taking the exam,
+            // so it's the hottest write path in the system. Safe because
+            // (peserta_ujian_id, bank_soal_id) has a UNIQUE constraint.
+            DB::table('jawaban_siswas')->upsert(
+                [[
                     'peserta_ujian_id' => $peserta->id,
                     'bank_soal_id' => $request->bank_soal_id,
-                ],
-                [
                     'jawaban_dipilih' => $jawabanValue,
-                    'is_ragu' => $request->boolean('is_ragu'),
-                ]
+                    'is_ragu' => $isRagu,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]],
+                ['peserta_ujian_id', 'bank_soal_id'],
+                ['jawaban_dipilih', 'is_ragu', 'updated_at']
             );
-
-            // Verify data was saved
-            $jawaban->refresh();
-            
-            \Log::info('Jawaban saved successfully', [
-                'id' => $jawaban->id,
-                'peserta_id' => $peserta->id,
-                'bank_soal_id' => $jawaban->bank_soal_id,
-                'jawaban_dipilih' => $jawaban->jawaban_dipilih,
-                'is_null' => $jawaban->jawaban_dipilih === null,
-                'is_empty' => $jawaban->jawaban_dipilih === '',
-            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Jawaban berhasil disimpan',
                 'data' => [
-                    'id' => $jawaban->id,
-                    'bank_soal_id' => $jawaban->bank_soal_id,
-                    'jawaban_dipilih' => $jawaban->jawaban_dipilih,
-                    'is_ragu' => $jawaban->is_ragu,
+                    'bank_soal_id' => (int) $request->bank_soal_id,
+                    'jawaban_dipilih' => $jawabanValue,
+                    'is_ragu' => $isRagu,
                     'verified' => true,
                 ]
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('Validation error saving answer', [
-                'errors' => $e->errors(),
-                'request' => $request->all(),
-            ]);
-            return response()->json([
-                'error' => 'Validasi gagal',
-                'message' => $e->getMessage(),
-                'errors' => $e->errors(),
-            ], 422);
         } catch (\Exception $e) {
             \Log::error('Error saving answer', [
+                'peserta_id' => $peserta->id,
+                'bank_soal_id' => $request->bank_soal_id,
                 'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'request' => $request->all(),
             ]);
             return response()->json([
                 'error' => 'Gagal menyimpan jawaban',
@@ -302,133 +275,112 @@ class ExamController extends Controller
             return redirect()->route('siswa.dashboard')->with('error', 'Sesi ujian tidak valid.');
         }
 
-        // Log untuk debugging
-        \Log::info('Submitting exam', [
-            'ujian_id' => $ujian->id,
-            'siswa_id' => $siswa->id,
-            'peserta_id' => $peserta->id,
-            'jawaban_count' => JawabanSiswa::where('peserta_ujian_id', $peserta->id)->count(),
-        ]);
-
         return $this->submitExam($ujian, $peserta);
     }
 
     /**
-     * Process exam submission and grading
+     * Process exam submission and grading.
+     *
+     * Wrapped in a transaction and grades are written with a handful of grouped
+     * bulk UPDATEs instead of one UPDATE per jawaban — matters when many siswa
+     * submit near-simultaneously (e.g. the exam timer running out for everyone
+     * who started together).
      */
     protected function submitExam(Ujian $ujian, PesertaUjian $peserta)
     {
-        // Ambil semua jawaban siswa dengan relasi
-        $jawabans = JawabanSiswa::with('bankSoal.opsiJawabans')
-            ->where('peserta_ujian_id', $peserta->id)
-            ->get();
-        
-        // Log untuk debugging
-        \Log::info('Processing exam submission', [
-            'peserta_id' => $peserta->id,
-            'ujian_id' => $ujian->id,
-            'total_jawaban' => $jawabans->count(),
-            'jawaban_terisi' => $jawabans->whereNotNull('jawaban_dipilih')->where('jawaban_dipilih', '!=', '')->count(),
-            'jawaban_detail' => $jawabans->map(function($j) {
-                return [
-                    'id' => $j->id,
-                    'soal_id' => $j->bank_soal_id,
-                    'jawaban' => $j->jawaban_dipilih,
-                    'is_empty' => empty($j->jawaban_dipilih),
-                ];
-            })->toArray(),
-        ]);
-        
-        $totalNilai = 0;
-        $totalBobot = 0;
-        $benarCount = 0;
-        $salahCount = 0;
-        $kosongCount = 0;
+        $nilaiAkhir = DB::transaction(function () use ($ujian, $peserta) {
+            $jawabans = JawabanSiswa::with('bankSoal.opsiJawabans')
+                ->where('peserta_ujian_id', $peserta->id)
+                ->get();
 
-        foreach ($jawabans as $jawaban) {
-            $soal = $jawaban->bankSoal;
-            if (!$soal) {
-                \Log::warning('Soal not found for jawaban', ['jawaban_id' => $jawaban->id, 'bank_soal_id' => $jawaban->bank_soal_id]);
-                continue;
-            }
+            $totalNilai = 0;
+            $totalBobot = 0;
+            $benarCount = 0;
+            $salahCount = 0;
+            $kosongCount = 0;
 
-            $totalBobot += $soal->bobot_nilai;
+            $emptyIds = [];
+            $wrongIds = [];
+            $correctIdsByBobot = [];
+            $essayIds = [];
+            $soalUsageIds = [];
 
-            // Cek apakah jawaban kosong
-            if (empty($jawaban->jawaban_dipilih) || $jawaban->jawaban_dipilih === '' || $jawaban->jawaban_dipilih === null) {
-                $kosongCount++;
-                $jawaban->update([
-                    'is_correct' => false,
-                    'nilai' => 0,
-                ]);
-                \Log::info('Empty answer', ['soal_id' => $soal->id, 'jawaban_id' => $jawaban->id]);
-                continue;
-            }
-
-            if ($soal->tipe_soal === 'pg' || $soal->tipe_soal === 'pg_kompleks') {
-                $correctOption = $soal->opsiJawabans()->where('is_correct', true)->first();
-                
-                if (!$correctOption) {
-                    \Log::warning('No correct option found', ['soal_id' => $soal->id]);
+            foreach ($jawabans as $jawaban) {
+                $soal = $jawaban->bankSoal;
+                if (!$soal) {
+                    \Log::warning('Soal not found for jawaban', ['jawaban_id' => $jawaban->id, 'bank_soal_id' => $jawaban->bank_soal_id]);
                     continue;
                 }
-                
-                \Log::info('Checking answer', [
-                    'soal_id' => $soal->id,
-                    'jawaban_siswa' => $jawaban->jawaban_dipilih,
-                    'jawaban_benar' => $correctOption->opsi_label,
-                    'is_match' => $jawaban->jawaban_dipilih === $correctOption->opsi_label,
-                ]);
-                
-                if ($jawaban->jawaban_dipilih === $correctOption->opsi_label) {
-                    $jawaban->update([
-                        'is_correct' => true,
-                        'nilai' => $soal->bobot_nilai,
-                    ]);
-                    $totalNilai += $soal->bobot_nilai;
-                    $benarCount++;
-                }
-                else {
-                    $jawaban->update([
-                        'is_correct' => false,
-                        'nilai' => 0,
-                    ]);
-                    $salahCount++;
+
+                $totalBobot += $soal->bobot_nilai;
+
+                if (empty($jawaban->jawaban_dipilih)) {
+                    $kosongCount++;
+                    $emptyIds[] = $jawaban->id;
+                    continue;
                 }
 
-                // Increment usage count
-                $soal->increment('digunakan_count');
+                if ($soal->tipe_soal === 'pg' || $soal->tipe_soal === 'pg_kompleks') {
+                    $correctOption = $soal->opsiJawabans->firstWhere('is_correct', true);
+
+                    if (!$correctOption) {
+                        \Log::warning('No correct option found', ['soal_id' => $soal->id]);
+                        continue;
+                    }
+
+                    $soalUsageIds[] = $soal->id;
+
+                    if ($jawaban->jawaban_dipilih === $correctOption->opsi_label) {
+                        $correctIdsByBobot[$soal->bobot_nilai][] = $jawaban->id;
+                        $totalNilai += $soal->bobot_nilai;
+                        $benarCount++;
+                    } else {
+                        $wrongIds[] = $jawaban->id;
+                        $salahCount++;
+                    }
+                } elseif ($soal->tipe_soal === 'essay') {
+                    // Essay tidak dinilai otomatis
+                    $essayIds[] = $jawaban->id;
+                }
             }
-            elseif ($soal->tipe_soal === 'essay') {
-                // Essay tidak dinilai otomatis
-                $jawaban->update([
-                    'is_correct' => null,
-                    'nilai' => 0,
-                ]);
+
+            if (!empty($emptyIds)) {
+                JawabanSiswa::whereIn('id', $emptyIds)->update(['is_correct' => false, 'nilai' => 0]);
             }
-        }
+            if (!empty($wrongIds)) {
+                JawabanSiswa::whereIn('id', $wrongIds)->update(['is_correct' => false, 'nilai' => 0]);
+            }
+            foreach ($correctIdsByBobot as $bobot => $ids) {
+                JawabanSiswa::whereIn('id', $ids)->update(['is_correct' => true, 'nilai' => $bobot]);
+            }
+            if (!empty($essayIds)) {
+                JawabanSiswa::whereIn('id', $essayIds)->update(['is_correct' => null, 'nilai' => 0]);
+            }
+            if (!empty($soalUsageIds)) {
+                BankSoal::whereIn('id', array_unique($soalUsageIds))->increment('digunakan_count');
+            }
 
-        // Calculate final score (0-100 scale)
-        $nilaiAkhir = $totalBobot > 0 ? round(($totalNilai / $totalBobot) * 100, 2) : 0;
+            // Calculate final score (0-100 scale)
+            $nilaiAkhir = $totalBobot > 0 ? round(($totalNilai / $totalBobot) * 100, 2) : 0;
 
-        $peserta->update([
-            'status' => 'selesai',
-            'waktu_selesai' => now(),
-            'nilai' => $nilaiAkhir,
-        ]);
+            $peserta->update([
+                'status' => 'selesai',
+                'waktu_selesai' => now(),
+                'nilai' => $nilaiAkhir,
+            ]);
 
-        // Log hasil
-        \Log::info('Exam submitted successfully', [
-            'peserta_id' => $peserta->id,
-            'ujian_id' => $ujian->id,
-            'nilai_akhir' => $nilaiAkhir,
-            'total_soal' => $jawabans->count(),
-            'benar' => $benarCount,
-            'salah' => $salahCount,
-            'kosong' => $kosongCount,
-            'total_bobot' => $totalBobot,
-            'total_nilai' => $totalNilai,
-        ]);
+            \Log::info('Exam submitted successfully', [
+                'peserta_id' => $peserta->id,
+                'ujian_id' => $ujian->id,
+                'nilai_akhir' => $nilaiAkhir,
+                'total_soal' => $jawabans->count(),
+                'benar' => $benarCount,
+                'salah' => $salahCount,
+                'kosong' => $kosongCount,
+            ]);
+
+            return $nilaiAkhir;
+        });
 
         ActivityLog::log('submit_exam', 'ujian', "Menyelesaikan ujian: {$ujian->nama_ujian}, Nilai: {$nilaiAkhir}");
 

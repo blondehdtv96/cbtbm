@@ -18,7 +18,6 @@
                     <div class="d-flex gap-2 mb-3">
                         <span class="badge-ios info">{{ $banksoal->mapel->nama_mapel ?? '-' }}</span>
                         <span class="badge-ios purple">{{ strtoupper($banksoal->tipe_soal) }}</span>
-                        <span class="badge-ios {{ $banksoal->tingkat_kesulitan == 'mudah' ? 'success' : ($banksoal->tingkat_kesulitan == 'sedang' ? 'warning' : 'danger') }}">{{ ucfirst($banksoal->tingkat_kesulitan) }}</span>
                         <span class="badge-ios primary">Bobot: {{ $banksoal->bobot_nilai }}</span>
                     </div>
 
@@ -43,12 +42,7 @@
                         @endforeach
                     @endif
 
-                    @if($banksoal->pembahasan)
-                        <div style="margin-top: 20px; padding: 16px; background: rgba(37, 99, 235, 0.05); border-radius: 12px; border: 1px solid rgba(37, 99, 235, 0.1);">
-                            <h6 style="font-weight: 700; color: var(--primary); margin-bottom: 8px;"><i class="bi bi-lightbulb-fill me-1"></i>Pembahasan:</h6>
-                            <p style="font-size: 14px; margin: 0;">{{ $banksoal->pembahasan }}</p>
-                        </div>
-                    @endif
+
                 </div>
             </div>
         </div>

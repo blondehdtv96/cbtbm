@@ -10,8 +10,8 @@ class BankSoal extends Model
     use HasFactory;
 
     protected $fillable = [
-        'mapel_id', 'guru_id', 'tipe_soal', 'tingkat_kesulitan', 'bobot_nilai',
-        'pertanyaan', 'gambar_soal', 'pembahasan', 'status', 'kategori', 'tag', 'digunakan_count',
+        'mapel_id', 'guru_id', 'tipe_soal', 'bobot_nilai',
+        'pertanyaan', 'gambar_soal', 'status', 'digunakan_count',
     ];
 
     public function mapel()

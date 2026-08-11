@@ -120,19 +120,14 @@ class DatabaseSeeder extends Seeder
             ['pertanyaan' => 'Faktor prima dari 30 adalah...', 'jawaban' => [['A', '2, 3, 5', true], ['B', '2, 3, 7', false], ['C', '2, 5, 7', false], ['D', '3, 5, 7', false], ['E', '2, 3, 10', false]]],
         ];
 
-        $difficulties = ['mudah', 'sedang', 'sulit'];
-
         foreach ($soalMatematika as $idx => $soal) {
             $bankSoal = BankSoal::create([
                 'mapel_id' => $mapels[0]->id,
                 'guru_id' => $gurus[0]->id,
                 'tipe_soal' => 'pg',
-                'tingkat_kesulitan' => $difficulties[$idx % 3],
                 'bobot_nilai' => 1,
                 'pertanyaan' => $soal['pertanyaan'],
-                'pembahasan' => 'Pembahasan soal nomor ' . ($idx + 1),
                 'status' => 'aktif',
-                'kategori' => 'Umum',
             ]);
 
             foreach ($soal['jawaban'] as $jawaban) {

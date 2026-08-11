@@ -443,23 +443,6 @@
             font-weight: 700;
         }
         
-        .explanation {
-            margin-top: 14px;
-            padding: 18px;
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border-radius: 14px;
-            font-size: 14px;
-            color: #78350f;
-            border-left: 4px solid #f59e0b;
-            line-height: 1.6;
-        }
-        
-        .explanation i {
-            color: #f59e0b;
-            margin-right: 10px;
-            font-size: 16px;
-        }
-        
         @media (max-width: 640px) {
             body {
                 padding: 16px;
@@ -614,12 +597,6 @@
                     <strong>Jawaban Benar:</strong> {{ $jwb->bankSoal->opsiJawabans->where('is_correct', true)->first()->opsi_label ?? '-' }}
                 </div>
                 
-                @if($jwb->bankSoal->pembahasan)
-                    <div class="explanation">
-                        <i class="bi bi-lightbulb-fill"></i>
-                        <strong>Pembahasan:</strong> {{ $jwb->bankSoal->pembahasan }}
-                    </div>
-                @endif
             </div>
             @endforeach
         </div>

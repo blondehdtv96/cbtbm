@@ -83,9 +83,6 @@ return new class extends Migration
                 if (Schema::hasColumn('bank_soals', 'tipe_soal') && !$this->indexExists('bank_soals', 'idx_soal_tipe')) {
                     $table->index('tipe_soal', 'idx_soal_tipe');
                 }
-                if (Schema::hasColumn('bank_soals', 'tingkat_kesulitan') && !$this->indexExists('bank_soals', 'idx_soal_kesulitan')) {
-                    $table->index('tingkat_kesulitan', 'idx_soal_kesulitan');
-                }
                 if (Schema::hasColumn('bank_soals', 'digunakan_count') && !$this->indexExists('bank_soals', 'idx_soal_digunakan')) {
                     $table->index('digunakan_count', 'idx_soal_digunakan');
                 }
@@ -227,7 +224,6 @@ return new class extends Migration
         if (Schema::hasTable('bank_soals')) {
             $dropIndexSafely('bank_soals', 'idx_soal_mapel');
             $dropIndexSafely('bank_soals', 'idx_soal_tipe');
-            $dropIndexSafely('bank_soals', 'idx_soal_kesulitan');
             $dropIndexSafely('bank_soals', 'idx_soal_digunakan');
         }
 

@@ -32,19 +32,11 @@
                         </div>
 
                         <div class="row g-3 mb-4">
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label class="form-label-ios">Bobot Nilai</label>
                                 <input type="number" name="bobot_nilai" class="form-control-ios w-100" value="{{ old('bobot_nilai', 1) }}" min="1">
                             </div>
-                            <div class="col-md-3">
-                                <label class="form-label-ios">Kategori</label>
-                                <input type="text" name="kategori" class="form-control-ios w-100" value="{{ old('kategori') }}" placeholder="Opsional">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label-ios">Tag</label>
-                                <input type="text" name="tag" class="form-control-ios w-100" value="{{ old('tag') }}" placeholder="Opsional">
-                            </div>
-                            <div class="col-md-3">
+                            <div class="col-md-6">
                                 <label class="form-label-ios">Gambar Soal</label>
                                 <input type="file" name="gambar_soal" class="form-control-ios w-100" accept="image/*">
                             </div>
@@ -68,11 +60,6 @@
                                 </label>
                             </div>
                             @endforeach
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label-ios">Pembahasan</label>
-                            <textarea name="pembahasan" class="form-control-ios w-100" rows="3" placeholder="Opsional">{{ old('pembahasan') }}</textarea>
                         </div>
 
                         <div class="d-flex gap-2">

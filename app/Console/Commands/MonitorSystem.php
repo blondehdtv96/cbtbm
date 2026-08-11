@@ -189,8 +189,8 @@ class MonitorSystem extends Command
         try {
             // Active exams today
             $activeExams = DB::table('ujians')
-                ->where('is_published', true)
-                ->whereDate('tanggal_ujian', now()->toDateString())
+                ->whereIn('status', ['publish', 'berlangsung'])
+                ->whereDate('tanggal_mulai', now()->toDateString())
                 ->count();
 
             $this->line("  Published Today: {$activeExams}");

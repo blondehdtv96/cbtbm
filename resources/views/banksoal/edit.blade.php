@@ -29,10 +29,9 @@
                             </div>
                         </div>
                         <div class="row g-3 mb-4">
-                            <div class="col-md-3"><label class="form-label-ios">Bobot</label><input type="number" name="bobot_nilai" class="form-control-ios w-100" value="{{ $banksoal->bobot_nilai }}" min="1"></div>
-                            <div class="col-md-3"><label class="form-label-ios">Status</label><select name="status" class="form-select-ios w-100"><option value="aktif" {{ $banksoal->status == 'aktif' ? 'selected' : '' }}>Aktif</option><option value="nonaktif" {{ $banksoal->status == 'nonaktif' ? 'selected' : '' }}>Nonaktif</option></select></div>
-                            <div class="col-md-3"><label class="form-label-ios">Kategori</label><input type="text" name="kategori" class="form-control-ios w-100" value="{{ $banksoal->kategori }}"></div>
-                            <div class="col-md-3"><label class="form-label-ios">Gambar</label><input type="file" name="gambar_soal" class="form-control-ios w-100" accept="image/*"></div>
+                            <div class="col-md-4"><label class="form-label-ios">Bobot</label><input type="number" name="bobot_nilai" class="form-control-ios w-100" value="{{ $banksoal->bobot_nilai }}" min="1"></div>
+                            <div class="col-md-4"><label class="form-label-ios">Status</label><select name="status" class="form-select-ios w-100"><option value="aktif" {{ $banksoal->status == 'aktif' ? 'selected' : '' }}>Aktif</option><option value="nonaktif" {{ $banksoal->status == 'nonaktif' ? 'selected' : '' }}>Nonaktif</option></select></div>
+                            <div class="col-md-4"><label class="form-label-ios">Gambar</label><input type="file" name="gambar_soal" class="form-control-ios w-100" accept="image/*"></div>
                         </div>
                         <div class="mb-4"><label class="form-label-ios">Pertanyaan</label><textarea name="pertanyaan" class="form-control-ios w-100" rows="5" required>{{ $banksoal->pertanyaan }}</textarea></div>
 
@@ -50,8 +49,6 @@
                             </div>
                             @endforeach
                         </div>
-
-                        <div class="mb-4"><label class="form-label-ios">Pembahasan</label><textarea name="pembahasan" class="form-control-ios w-100" rows="3">{{ $banksoal->pembahasan }}</textarea></div>
 
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-ios btn-ios-primary"><i class="bi bi-check-lg"></i> Update</button>

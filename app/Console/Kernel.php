@@ -12,7 +12,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Keep ujian/soal cache warm for exams starting soon so the first
+        // siswa to load the exam page doesn't pay the cache-miss query cost.
+        $schedule->command('cache:warmup')->everyFifteenMinutes()->withoutOverlapping();
     }
 
     /**

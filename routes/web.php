@@ -21,7 +21,7 @@ use App\Http\Controllers\AntiCheatController;
 // Auth Routes
 Route::get('/', [LoginController::class , 'showLoginForm']);
 Route::get('/login', [LoginController::class , 'showLoginForm'])->name('login');
-Route::post('/login', [LoginController::class , 'login'])->name('login.process');
+Route::post('/login', [LoginController::class , 'login'])->middleware('throttle.custom:5,1')->name('login.process');
 Route::post('/logout', [LoginController::class , 'logout'])->name('logout');
 
 // Super Admin Routes
@@ -163,10 +163,10 @@ Route::middleware(['auth', 'role:siswa'])->prefix('siswa')->name('siswa.')->grou
 // Exam Routes (Siswa)
 Route::middleware(['auth', 'role:siswa'])->prefix('exam')->name('exam.')->group(function () {
     Route::get('/{ujian}/start', [ExamController::class , 'start'])->name('start');
-    Route::post('/{ujian}/verify-token', [ExamController::class , 'verifyToken'])->name('verify-token');
+    Route::post('/{ujian}/verify-token', [ExamController::class , 'verifyToken'])->middleware('throttle.custom:10,1')->name('verify-token');
     Route::get('/{ujian}/mengerjakan', [ExamController::class , 'mengerjakan'])->name('mengerjakan');
-    Route::post('/{ujian}/save-jawaban', [ExamController::class , 'saveJawaban'])->name('save-jawaban');
+    Route::post('/{ujian}/save-jawaban', [ExamController::class , 'saveJawaban'])->middleware('throttle.custom:120,1')->name('save-jawaban');
     Route::post('/{ujian}/submit', [ExamController::class , 'submit'])->name('submit');
     Route::get('/{ujian}/result', [ExamController::class , 'result'])->name('result');
-    Route::post('/{ujian}/anti-cheat', [ExamController::class , 'antiCheatViolation'])->name('anti-cheat');
+    Route::post('/{ujian}/anti-cheat', [ExamController::class , 'antiCheatViolation'])->middleware('throttle.custom:30,1')->name('anti-cheat');
 });

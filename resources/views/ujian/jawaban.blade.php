@@ -156,19 +156,6 @@
                         </div>
                     </div>
                     
-                    <!-- Kunci Jawaban / Pembahasan -->
-                    @if($soal->pembahasan)
-                    <div class="mt-3">
-                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#pembahasan-{{ $soal->id }}">
-                            <i class="bi bi-lightbulb"></i> Lihat Pembahasan
-                        </button>
-                        <div class="collapse mt-2" id="pembahasan-{{ $soal->id }}">
-                            <div class="card card-body bg-light border-0">
-                                {!! nl2br(e($soal->pembahasan)) !!}
-                            </div>
-                        </div>
-                    </div>
-                    @endif
                 </div>
             </div>
         @endforeach

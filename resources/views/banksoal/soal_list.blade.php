@@ -46,12 +46,6 @@
                 <option value="essay" {{ request('tipe_soal') == 'essay' ? 'selected' : '' }}>Essay</option>
                 <option value="pg_kompleks" {{ request('tipe_soal') == 'pg_kompleks' ? 'selected' : '' }}>PG Kompleks</option>
             </select>
-            <select name="tingkat_kesulitan" class="form-select-ios" style="width: 130px;" onchange="this.form.submit()">
-                <option value="">Semua Level</option>
-                <option value="mudah" {{ request('tingkat_kesulitan') == 'mudah' ? 'selected' : '' }}>Mudah</option>
-                <option value="sedang" {{ request('tingkat_kesulitan') == 'sedang' ? 'selected' : '' }}>Sedang</option>
-                <option value="sulit" {{ request('tingkat_kesulitan') == 'sulit' ? 'selected' : '' }}>Sulit</option>
-            </select>
             <button type="submit" class="btn btn-ios btn-ios-light"><i class="bi bi-search"></i></button>
         </form>
         <div class="d-flex gap-2">
@@ -100,7 +94,6 @@
                         <th style="width:40px; text-align:center;">No.</th>
                         <th>Pertanyaan</th>
                         <th>Tipe</th>
-                        <th>Level</th>
                         <th style="text-align:center;">Bobot</th>
                         <th>Oleh</th>
                         <th>Status</th>
@@ -125,7 +118,6 @@
                             @endif
                         </td>
                         <td><span class="badge-ios {{ $soal->tipe_soal === 'essay' ? 'info' : 'purple' }}">{{ strtoupper(str_replace('_', ' ', $soal->tipe_soal)) }}</span></td>
-                        <td><span class="badge-ios {{ $soal->tingkat_kesulitan == 'mudah' ? 'success' : ($soal->tingkat_kesulitan == 'sedang' ? 'warning' : 'danger') }}">{{ ucfirst($soal->tingkat_kesulitan) }}</span></td>
                         <td style="text-align:center; font-weight:700;">{{ $soal->bobot_nilai }}</td>
                         <td style="font-size:12px; color:#64748b;">{{ $soal->guru->nama ?? '-' }}</td>
                         <td><span class="badge-ios {{ $soal->status == 'aktif' ? 'success' : 'secondary' }}">{{ ucfirst($soal->status) }}</span></td>
@@ -176,27 +168,11 @@
                                 <option value="menjodohkan">Menjodohkan</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label-ios">Tingkat Kesulitan <span style="color:#ef4444;">*</span></label>
-                            <select name="tingkat_kesulitan" class="form-select-ios w-100" required>
-                                <option value="mudah">Mudah</option>
-                                <option value="sedang" selected>Sedang</option>
-                                <option value="sulit">Sulit</option>
-                            </select>
-                        </div>
                     </div>
                     <div class="row g-3 mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-12">
                             <label class="form-label-ios">Bobot Nilai <span style="color:#ef4444;">*</span></label>
                             <input type="number" name="bobot_nilai" class="form-control-ios w-100" value="1" min="1" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label-ios">Kategori</label>
-                            <input type="text" name="kategori" class="form-control-ios w-100" placeholder="Opsional">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label-ios">Tag</label>
-                            <input type="text" name="tag" class="form-control-ios w-100" placeholder="Opsional">
                         </div>
                     </div>
                     <div class="mb-3">
@@ -215,10 +191,6 @@
                             </label>
                         </div>
                         @endforeach
-                    </div>
-                    <div class="mt-3">
-                        <label class="form-label-ios">Pembahasan</label>
-                        <textarea name="pembahasan" class="form-control-ios w-100" rows="3" placeholder="Opsional"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid #f1f5f9; padding:16px 28px; background:#fafbfc;">
@@ -308,10 +280,8 @@ const soalData = <?php
             'id' => $s->id,
             'pertanyaan' => $s->pertanyaan,
             'tipe_soal' => $s->tipe_soal,
-            'tingkat_kesulitan' => $s->tingkat_kesulitan,
             'bobot_nilai' => $s->bobot_nilai,
             'guru' => $s->guru->nama ?? '-',
-            'pembahasan' => $s->pembahasan,
             'opsi' => $s->opsiJawabans->map(fn($o) => [
                 'label' => $o->opsi_label, 'isi' => $o->isi_opsi, 'correct' => $o->is_correct,
             ])->values()->toArray(),
@@ -322,7 +292,6 @@ const soalData = <?php
 
 function showDetail(id) {
     const soal = soalData[id]; if (!soal) return;
-    const lc = soal.tingkat_kesulitan === 'mudah' ? 'success' : (soal.tingkat_kesulitan === 'sedang' ? 'warning' : 'danger');
     let opsiHtml = '';
     if (soal.opsi && soal.opsi.length > 0) {
         opsiHtml = '<div style="margin-top:16px;"><div style="font-weight:700; font-size:13px; color:#334155; margin-bottom:10px;"><i class="bi bi-list-check me-1" style="color:#6366f1;"></i>Opsi Jawaban:</div>';
@@ -336,17 +305,15 @@ function showDetail(id) {
         });
         opsiHtml += '</div>';
     }
-    const pb = soal.pembahasan ? `<div style="margin-top:16px; background:rgba(37,99,235,0.04); border:1px solid rgba(37,99,235,0.1); border-radius:12px; padding:14px 16px;"><div style="font-weight:700; font-size:13px; color:#2563eb; margin-bottom:6px;"><i class="bi bi-lightbulb-fill me-1"></i>Pembahasan:</div><div style="font-size:14px; color:#334155; line-height:1.7;">${soal.pembahasan}</div></div>` : '';
     document.getElementById('detailSoalBody').innerHTML = `
         <div class="row g-3 mb-3">
-            <div class="col-4"><div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Tipe</div><div style="margin-top:4px;"><span class="badge-ios purple">${soal.tipe_soal.toUpperCase()}</span></div></div>
-            <div class="col-4"><div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Tingkat</div><div style="margin-top:4px;"><span class="badge-ios ${lc}">${soal.tingkat_kesulitan}</span></div></div>
-            <div class="col-4"><div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Bobot</div><div style="font-weight:800; color:#0f172a; margin-top:4px;">${soal.bobot_nilai}</div></div>
+            <div class="col-6"><div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Tipe</div><div style="margin-top:4px;"><span class="badge-ios purple">${soal.tipe_soal.toUpperCase()}</span></div></div>
+            <div class="col-6"><div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Bobot</div><div style="font-weight:800; color:#0f172a; margin-top:4px;">${soal.bobot_nilai}</div></div>
         </div>
         <hr style="border-color:#f1f5f9;">
         <div style="font-weight:700; font-size:13px; color:#334155; margin-bottom:8px;">Pertanyaan:</div>
         <div style="font-size:15px; color:#0f172a; line-height:1.7; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0;">${soal.pertanyaan}</div>
-        ${opsiHtml}${pb}
+        ${opsiHtml}
         <div style="margin-top:14px; font-size:12px; color:#94a3b8;"><i class="bi bi-person-fill me-1"></i>${soal.guru}</div>`;
     new bootstrap.Modal(document.getElementById('modalDetailSoal')).show();
 }

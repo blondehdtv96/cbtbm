@@ -7,6 +7,8 @@ use App\Models\Mapel;
 use App\Models\Guru;
 use App\Models\OpsiJawaban;
 use App\Models\ActivityLog;
+use App\Models\ImportBatch;
+use App\Jobs\ImportBankSoalJob;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -47,18 +49,14 @@ class ImportBankSoalController extends Controller
             'A' => 'No',
             'B' => 'Kode Mapel',
             'C' => 'Tipe Soal',
-            'D' => 'Tingkat Kesulitan',
-            'E' => 'Bobot Nilai',
-            'F' => 'Pertanyaan',
-            'G' => 'Opsi A',
-            'H' => 'Opsi B',
-            'I' => 'Opsi C',
-            'J' => 'Opsi D',
-            'K' => 'Opsi E',
-            'L' => 'Jawaban Benar',
-            'M' => 'Pembahasan',
-            'N' => 'Kategori',
-            'O' => 'Tag',
+            'D' => 'Bobot Nilai',
+            'E' => 'Pertanyaan',
+            'F' => 'Opsi A',
+            'G' => 'Opsi B',
+            'H' => 'Opsi C',
+            'I' => 'Opsi D',
+            'J' => 'Opsi E',
+            'K' => 'Jawaban Benar',
         ];
 
         foreach ($headers as $col => $header) {
@@ -81,9 +79,9 @@ class ImportBankSoalController extends Controller
 
         // Sample data PG
         $samplePG = [
-            [1, 'MTK', 'pg', 'mudah', 1, 'Berapakah hasil dari 5 + 3?', '6', '7', '8', '9', '10', 'C', 'Penjumlahan: 5 + 3 = 8', 'Aritmatika', 'penjumlahan'],
-            [2, 'MTK', 'pg', 'sedang', 1, 'Nilai dari √81 adalah...', '7', '8', '9', '10', '11', 'C', 'Akar kuadrat dari 81 = 9', 'Aritmatika', 'akar'],
-            [3, 'BIN', 'pg', 'mudah', 1, 'Kata "menulis" termasuk jenis kata...', 'Kata benda', 'Kata kerja', 'Kata sifat', 'Kata keterangan', '', 'B', 'Menulis adalah aktivitas, termasuk kata kerja', 'Tata Bahasa', 'kata kerja'],
+            [1, 'MTK', 'pg', 1, 'Berapakah hasil dari 5 + 3?', '6', '7', '8', '9', '10', 'C'],
+            [2, 'MTK', 'pg', 1, 'Nilai dari √81 adalah...', '7', '8', '9', '10', '11', 'C'],
+            [3, 'BIN', 'pg', 1, 'Kata "menulis" termasuk jenis kata...', 'Kata benda', 'Kata kerja', 'Kata sifat', 'Kata keterangan', '', 'B'],
         ];
 
         $row = 2;
@@ -94,7 +92,7 @@ class ImportBankSoalController extends Controller
                 $col++;
             }
             // Light row styling
-            $sheet->getStyle("A{$row}:O{$row}")->applyFromArray([
+            $sheet->getStyle("A{$row}:K{$row}")->applyFromArray([
                 'fill' => [
                     'fillType' => Fill::FILL_SOLID,
                     'startColor' => ['rgb' => $row % 2 === 0 ? 'F5F3FF' : 'FFFFFF'],
@@ -107,18 +105,14 @@ class ImportBankSoalController extends Controller
         $sheet->getColumnDimension('A')->setWidth(5);
         $sheet->getColumnDimension('B')->setWidth(14);
         $sheet->getColumnDimension('C')->setWidth(12);
-        $sheet->getColumnDimension('D')->setWidth(18);
-        $sheet->getColumnDimension('E')->setWidth(12);
-        $sheet->getColumnDimension('F')->setWidth(45);
+        $sheet->getColumnDimension('D')->setWidth(12);
+        $sheet->getColumnDimension('E')->setWidth(45);
+        $sheet->getColumnDimension('F')->setWidth(20);
         $sheet->getColumnDimension('G')->setWidth(20);
         $sheet->getColumnDimension('H')->setWidth(20);
         $sheet->getColumnDimension('I')->setWidth(20);
         $sheet->getColumnDimension('J')->setWidth(20);
-        $sheet->getColumnDimension('K')->setWidth(20);
-        $sheet->getColumnDimension('L')->setWidth(16);
-        $sheet->getColumnDimension('M')->setWidth(40);
-        $sheet->getColumnDimension('N')->setWidth(15);
-        $sheet->getColumnDimension('O')->setWidth(15);
+        $sheet->getColumnDimension('K')->setWidth(16);
 
         // Freeze header
         $sheet->freezePane('A2');
@@ -130,12 +124,8 @@ class ImportBankSoalController extends Controller
         $essayHeaders = [
             'A' => 'No',
             'B' => 'Kode Mapel',
-            'C' => 'Tingkat Kesulitan',
-            'D' => 'Bobot Nilai',
-            'E' => 'Pertanyaan',
-            'F' => 'Pembahasan / Kunci Jawaban',
-            'G' => 'Kategori',
-            'H' => 'Tag',
+            'C' => 'Bobot Nilai',
+            'D' => 'Pertanyaan',
         ];
 
         foreach ($essayHeaders as $col => $header) {
@@ -155,8 +145,8 @@ class ImportBankSoalController extends Controller
 
         // Sample essay data
         $sampleEssay = [
-            [1, 'MTK', 'sedang', 5, 'Jelaskan langkah-langkah menyelesaikan persamaan kuadrat ax² + bx + c = 0 menggunakan rumus ABC!', 'Langkah: 1) Identifikasi a, b, c. 2) Hitung D = b² - 4ac. 3) x = (-b ± √D) / 2a', 'Aljabar', 'persamaan kuadrat'],
-            [2, 'BIN', 'sulit', 10, 'Buatlah paragraf argumentasi tentang pentingnya literasi digital bagi pelajar!', 'Paragraf harus memuat: kalimat utama, alasan/bukti, dan kesimpulan', 'Menulis', 'paragraf'],
+            [1, 'MTK', 5, 'Jelaskan langkah-langkah menyelesaikan persamaan kuadrat ax² + bx + c = 0 menggunakan rumus ABC!'],
+            [2, 'BIN', 10, 'Buatlah paragraf argumentasi tentang pentingnya literasi digital bagi pelajar!'],
         ];
 
         $row = 2;
@@ -171,12 +161,8 @@ class ImportBankSoalController extends Controller
 
         $essaySheet->getColumnDimension('A')->setWidth(5);
         $essaySheet->getColumnDimension('B')->setWidth(14);
-        $essaySheet->getColumnDimension('C')->setWidth(18);
-        $essaySheet->getColumnDimension('D')->setWidth(12);
-        $essaySheet->getColumnDimension('E')->setWidth(55);
-        $essaySheet->getColumnDimension('F')->setWidth(55);
-        $essaySheet->getColumnDimension('G')->setWidth(15);
-        $essaySheet->getColumnDimension('H')->setWidth(15);
+        $essaySheet->getColumnDimension('C')->setWidth(12);
+        $essaySheet->getColumnDimension('D')->setWidth(55);
         $essaySheet->freezePane('A2');
 
         // ===== SHEET 3: Panduan =====
@@ -194,25 +180,17 @@ class ImportBankSoalController extends Controller
             ['No', 'Nomor urut (opsional, untuk referensi saja)'],
             ['Kode Mapel', 'Kode mata pelajaran yang terdaftar di sistem (wajib, lihat daftar di bawah)'],
             ['Tipe Soal', 'Isi dengan: pg (wajib, otomatis untuk sheet ini)'],
-            ['Tingkat Kesulitan', 'Isi dengan: mudah, sedang, atau sulit (wajib)'],
             ['Bobot Nilai', 'Bobot penilaian soal, angka (wajib, default: 1)'],
             ['Pertanyaan', 'Teks pertanyaan soal (wajib)'],
             ['Opsi A - E', 'Isi opsi jawaban. Minimal 2 opsi harus diisi (A dan B). Opsi E boleh kosong'],
             ['Jawaban Benar', 'Huruf opsi jawaban yang benar: A, B, C, D, atau E (wajib)'],
-            ['Pembahasan', 'Penjelasan jawaban (opsional)'],
-            ['Kategori', 'Kategori soal, misal: Aljabar, Geometri (opsional)'],
-            ['Tag', 'Tag/label untuk soal (opsional)'],
             ['', ''],
             ['SHEET "Soal Essay"', ''],
             ['Kolom', 'Keterangan'],
             ['No', 'Nomor urut (opsional)'],
             ['Kode Mapel', 'Kode mata pelajaran (wajib)'],
-            ['Tingkat Kesulitan', 'mudah / sedang / sulit (wajib)'],
             ['Bobot Nilai', 'Bobot penilaian (wajib)'],
             ['Pertanyaan', 'Teks pertanyaan (wajib)'],
-            ['Pembahasan / Kunci Jawaban', 'Pembahasan atau kunci jawaban essay (opsional)'],
-            ['Kategori', 'Kategori soal (opsional)'],
-            ['Tag', 'Tag soal (opsional)'],
             ['', ''],
             ['CATATAN PENTING:', ''],
             ['1.', 'Soal akan otomatis dikaitkan ke guru yang sedang login'],
@@ -316,7 +294,6 @@ class ImportBankSoalController extends Controller
 
         $previewData = [];
         $validTipeSoal = ['pg', 'essay', 'pg_kompleks', 'menjodohkan'];
-        $validTingkat = ['mudah', 'sedang', 'sulit'];
         $validJawaban = ['a', 'b', 'c', 'd', 'e'];
 
         // Process each sheet
@@ -348,14 +325,10 @@ class ImportBankSoalController extends Controller
                 $rowErrors = [];
 
                 if ($isEssaySheet) {
-                    // Essay format: No | Kode Mapel | Tingkat | Bobot | Pertanyaan | Pembahasan | Kategori | Tag
+                    // Essay format: No | Kode Mapel | Bobot | Pertanyaan
                     $kodeMapel = strtolower(trim($rowValues[1] ?? ''));
-                    $tingkat = strtolower(trim($rowValues[2] ?? ''));
-                    $bobot = intval($rowValues[3] ?? 1);
-                    $pertanyaan = trim($rowValues[4] ?? '');
-                    $pembahasan = trim($rowValues[5] ?? '');
-                    $kategori = trim($rowValues[6] ?? '');
-                    $tag = trim($rowValues[7] ?? '');
+                    $bobot = intval($rowValues[2] ?? 1);
+                    $pertanyaan = trim($rowValues[3] ?? '');
                     $tipeSoal = 'essay';
 
                     // Validate
@@ -368,13 +341,6 @@ class ImportBankSoalController extends Controller
                         if (!$resolvedMapel) {
                             $rowErrors[] = "Kode Mapel '{$rowValues[1]}' tidak ditemukan";
                         }
-                    }
-
-                    if (empty($tingkat)) {
-                        $rowErrors[] = 'Tingkat Kesulitan kosong';
-                    }
-                    elseif (!in_array($tingkat, $validTingkat)) {
-                        $rowErrors[] = "Tingkat Kesulitan '{$rowValues[2]}' tidak valid (gunakan: mudah/sedang/sulit)";
                     }
 
                     if ($bobot < 1) {
@@ -391,12 +357,8 @@ class ImportBankSoalController extends Controller
                         'tipe_soal' => 'essay',
                         'kode_mapel' => $rowValues[1] ?? '',
                         'mapel' => $resolvedMapel,
-                        'tingkat_kesulitan' => $tingkat,
                         'bobot_nilai' => $bobot,
                         'pertanyaan' => $pertanyaan,
-                        'pembahasan' => $pembahasan,
-                        'kategori' => $kategori,
-                        'tag' => $tag,
                         'opsi' => [],
                         'jawaban_benar' => '-',
                         'errors' => $rowErrors,
@@ -404,21 +366,17 @@ class ImportBankSoalController extends Controller
                     ];
                 }
                 else {
-                    // PG format: No | Kode Mapel | Tipe Soal | Tingkat | Bobot | Pertanyaan | A | B | C | D | E | Jawaban | Pembahasan | Kategori | Tag
+                    // PG format: No | Kode Mapel | Tipe Soal | Bobot | Pertanyaan | A | B | C | D | E | Jawaban
                     $kodeMapel = strtolower(trim($rowValues[1] ?? ''));
                     $tipeSoal = strtolower(trim($rowValues[2] ?? 'pg'));
-                    $tingkat = strtolower(trim($rowValues[3] ?? ''));
-                    $bobot = intval($rowValues[4] ?? 1);
-                    $pertanyaan = trim($rowValues[5] ?? '');
-                    $opsiA = trim($rowValues[6] ?? '');
-                    $opsiB = trim($rowValues[7] ?? '');
-                    $opsiC = trim($rowValues[8] ?? '');
-                    $opsiD = trim($rowValues[9] ?? '');
-                    $opsiE = trim($rowValues[10] ?? '');
-                    $jawabanBenar = strtolower(trim($rowValues[11] ?? ''));
-                    $pembahasan = trim($rowValues[12] ?? '');
-                    $kategori = trim($rowValues[13] ?? '');
-                    $tag = trim($rowValues[14] ?? '');
+                    $bobot = intval($rowValues[3] ?? 1);
+                    $pertanyaan = trim($rowValues[4] ?? '');
+                    $opsiA = trim($rowValues[5] ?? '');
+                    $opsiB = trim($rowValues[6] ?? '');
+                    $opsiC = trim($rowValues[7] ?? '');
+                    $opsiD = trim($rowValues[8] ?? '');
+                    $opsiE = trim($rowValues[9] ?? '');
+                    $jawabanBenar = strtolower(trim($rowValues[10] ?? ''));
 
                     // Validate mapel
                     $resolvedMapel = null;
@@ -438,14 +396,6 @@ class ImportBankSoalController extends Controller
                     }
                     if (!in_array($tipeSoal, $validTipeSoal)) {
                         $rowErrors[] = "Tipe Soal '{$rowValues[2]}' tidak valid";
-                    }
-
-                    // Validate tingkat
-                    if (empty($tingkat)) {
-                        $rowErrors[] = 'Tingkat Kesulitan kosong';
-                    }
-                    elseif (!in_array($tingkat, $validTingkat)) {
-                        $rowErrors[] = "Tingkat Kesulitan '{$rowValues[3]}' tidak valid (gunakan: mudah/sedang/sulit)";
                     }
 
                     if ($bobot < 1) {
@@ -470,7 +420,7 @@ class ImportBankSoalController extends Controller
                             $rowErrors[] = 'Jawaban Benar kosong';
                         }
                         elseif (!in_array($jawabanBenar, $validJawaban)) {
-                            $rowErrors[] = "Jawaban Benar '{$rowValues[11]}' tidak valid (gunakan: A/B/C/D/E)";
+                            $rowErrors[] = "Jawaban Benar '{$rowValues[10]}' tidak valid (gunakan: A/B/C/D/E)";
                         }
                         else {
                             // Check the referenced opsi is not empty
@@ -499,12 +449,8 @@ class ImportBankSoalController extends Controller
                         'tipe_soal' => $tipeSoal,
                         'kode_mapel' => $rowValues[1] ?? '',
                         'mapel' => $resolvedMapel,
-                        'tingkat_kesulitan' => $tingkat,
                         'bobot_nilai' => $bobot,
                         'pertanyaan' => $pertanyaan,
-                        'pembahasan' => $pembahasan,
-                        'kategori' => $kategori,
-                        'tag' => $tag,
                         'opsi' => $opsi,
                         'jawaban_benar' => strtoupper($jawabanBenar),
                         'errors' => $rowErrors,
@@ -563,6 +509,21 @@ class ImportBankSoalController extends Controller
                 ->with('error', 'Tidak ada data valid untuk diimport.');
         }
 
+        // Large imports are processed in the background so the request doesn't
+        // tie up a PHP-FPM worker / risk a timeout while hundreds of rows are inserted.
+        if ($validRows->count() > 150) {
+            $batch = ImportBatch::create([
+                'created_by' => auth()->id(),
+                'status' => 'processing',
+            ]);
+
+            ImportBankSoalJob::dispatch($batch->id, $validRows->values()->all(), $guru->id);
+
+            session()->forget(['import_banksoal_preview', 'import_banksoal_file_name']);
+
+            return redirect()->route('admin.import-banksoal.result', ['batch' => $batch->id]);
+        }
+
         $successCount = 0;
         $importedSoals = [];
 
@@ -573,13 +534,9 @@ class ImportBankSoalController extends Controller
                     'mapel_id' => $row['mapel']->id,
                     'guru_id' => $guru->id,
                     'tipe_soal' => $row['tipe_soal'],
-                    'tingkat_kesulitan' => $row['tingkat_kesulitan'],
                     'bobot_nilai' => $row['bobot_nilai'],
                     'pertanyaan' => $row['pertanyaan'],
-                    'pembahasan' => $row['pembahasan'] ?: null,
                     'status' => 'aktif',
-                    'kategori' => $row['kategori'] ?: null,
-                    'tag' => $row['tag'] ?: null,
                 ]);
 
                 // Save opsi jawaban for PG
@@ -599,7 +556,6 @@ class ImportBankSoalController extends Controller
                     'pertanyaan' => \Str::limit($row['pertanyaan'], 60),
                     'tipe_soal' => $row['tipe_soal'],
                     'mapel' => $row['mapel']->nama_mapel,
-                    'tingkat' => $row['tingkat_kesulitan'],
                 ];
 
                 $successCount++;
@@ -624,10 +580,41 @@ class ImportBankSoalController extends Controller
     }
 
     /**
-     * Show import result
+     * Show import result — either the synchronous result stashed in session,
+     * or the status of a background import batch (?batch=id, for large files).
      */
-    public function result()
+    public function result(Request $request)
     {
+        if ($request->filled('batch')) {
+            $batch = ImportBatch::find($request->query('batch'));
+
+            if (!$batch) {
+                return redirect()->route('admin.import-banksoal.index')
+                    ->with('error', 'Batch import tidak ditemukan.');
+            }
+
+            if ($batch->status === 'processing') {
+                return view('admin.import-banksoal.result', [
+                    'processing' => true,
+                    'batch' => $batch,
+                    'importedSoals' => [],
+                    'successCount' => 0,
+                ]);
+            }
+
+            if ($batch->status === 'failed') {
+                return redirect()->route('admin.import-banksoal.index')
+                    ->with('error', 'Import gagal: ' . $batch->error_message);
+            }
+
+            return view('admin.import-banksoal.result', [
+                'processing' => false,
+                'batch' => $batch,
+                'importedSoals' => $batch->imported_soals,
+                'successCount' => $batch->success_count,
+            ]);
+        }
+
         $importedSoals = session('import_banksoal_result');
         $successCount = session('import_banksoal_success_count', 0);
 
@@ -635,6 +622,11 @@ class ImportBankSoalController extends Controller
             return redirect()->route('admin.import-banksoal.index');
         }
 
-        return view('admin.import-banksoal.result', compact('importedSoals', 'successCount'));
+        return view('admin.import-banksoal.result', [
+            'processing' => false,
+            'batch' => null,
+            'importedSoals' => $importedSoals,
+            'successCount' => $successCount,
+        ]);
     }
 }

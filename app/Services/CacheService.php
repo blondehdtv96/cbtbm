@@ -29,20 +29,26 @@ class CacheService
     }
 
     /**
-     * Cache soal for ujian
+     * Cache soal + opsi for an ujian, keyed by bank_soal_id.
+     *
+     * Deliberately NOT ordered here: soal order can differ per-peserta
+     * (metode_soal=random shuffles per siswa), so callers apply their own
+     * peserta-specific order on top of this shared, unordered cache entry.
      */
-    public function cacheSoalUjian($ujianId, $soalOrder)
+    public function cacheSoalUjian($ujianId)
     {
         $key = "ujian:{$ujianId}:soals";
-        
-        return Cache::remember($key, self::TTL_LONG, function () use ($soalOrder) {
-            return \App\Models\BankSoal::with('opsiJawabans')
-                ->whereIn('id', $soalOrder)
+
+        return Cache::remember($key, self::TTL_LONG, function () use ($ujianId) {
+            $ujian = \App\Models\Ujian::find($ujianId);
+            if (!$ujian) {
+                return collect();
+            }
+
+            return $ujian->bankSoals()
+                ->with('opsiJawabans')
                 ->get()
-                ->sortBy(function ($soal) use ($soalOrder) {
-                    return array_search($soal->id, $soalOrder);
-                })
-                ->values();
+                ->keyBy('id');
         });
     }
 
@@ -163,9 +169,9 @@ class CacheService
      */
     public function warmUpActiveExams()
     {
-        $activeUjians = \App\Models\Ujian::where('is_published', true)
-            ->where('tanggal_ujian', '>=', now()->subDays(1))
-            ->where('tanggal_ujian', '<=', now()->addDays(1))
+        $activeUjians = \App\Models\Ujian::whereIn('status', ['publish', 'berlangsung'])
+            ->where('tanggal_mulai', '>=', now()->subDays(1))
+            ->where('tanggal_mulai', '<=', now()->addDays(1))
             ->get();
 
         foreach ($activeUjians as $ujian) {

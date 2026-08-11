@@ -187,6 +187,158 @@
                 height: 6px !important;
             }
         }
+
+        /* Review All Questions Modal */
+        .review-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.55);
+            z-index: 10001;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .review-modal-overlay.show { display: flex; }
+        .review-modal {
+            background: #fff;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 480px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+            overflow: hidden;
+        }
+        .review-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .review-modal-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .review-modal-close {
+            background: var(--bg-secondary);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .review-modal-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            padding: 16px 20px;
+        }
+        .review-stat {
+            text-align: center;
+            padding: 10px;
+            border-radius: 12px;
+            background: var(--bg-secondary);
+        }
+        .review-stat span {
+            display: block;
+            font-size: 20px;
+            font-weight: 800;
+        }
+        .review-stat label {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .review-stat.answered span { color: #10b981; }
+        .review-stat.unanswered span { color: #64748b; }
+        .review-stat.doubt span { color: #f59e0b; }
+        .review-modal-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 0 20px 12px;
+            overflow-x: auto;
+        }
+        .review-tab {
+            border: 1px solid var(--border-color);
+            background: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            color: var(--text-secondary);
+        }
+        .review-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+        }
+        .review-modal-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 20px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .review-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .review-item:hover { transform: translateX(2px); }
+        .review-item-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .review-item.answered .review-item-number { background: linear-gradient(135deg, #22c55e, #10b981); }
+        .review-item.doubt .review-item-number { background: linear-gradient(135deg, #f59e0b, #f97316); }
+        .review-item.unanswered .review-item-number { background: #94a3b8; }
+        .review-item-status {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        .review-empty {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+        .review-modal-footer {
+            padding: 14px 20px 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        @media (max-width: 480px) {
+            .review-modal { max-height: 90vh; }
+            .review-modal-stats { gap: 6px; padding: 12px 14px; }
+            .review-modal-tabs { padding: 0 14px 10px; }
+            .review-modal-grid { padding: 4px 14px 10px; }
+        }
     </style>
 </head>
 <body class="exam-fullscreen">
@@ -245,11 +397,6 @@
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <div class="d-flex align-items-center gap-2 gap-md-3">
                         <div class="question-number">{{ $index + 1 }}</div>
-                        <div>
-                            <span class="badge-ios {{ $soal->tingkat_kesulitan == 'mudah' ? 'success' : ($soal->tingkat_kesulitan == 'sedang' ? 'warning' : 'danger') }}">
-                                {{ ucfirst($soal->tingkat_kesulitan) }}
-                            </span>
-                        </div>
                     </div>
                     <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 12px; background: rgba(245, 158, 11, 0.08); border-radius: 10px; font-size: 12px; font-weight: 600; color: #f59e0b;">
                         <input type="checkbox" class="ragu-checkbox" data-index="{{ $index }}" data-soal-id="{{ $soal->id }}"
@@ -309,8 +456,14 @@
                 <button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()">
                     <div class="d-flex align-items-center gap-2">
                         <span style="font-weight: 700; font-size: 13px;" id="mobileProgress">0/{{ $soals->count() }} dijawab</span>
+                        <span id="mobileDoubtBadge" style="display:none; font-weight: 700; font-size: 11px; color: #b45309; background: rgba(245,158,11,0.15); padding: 3px 8px; border-radius: 10px;">
+                            <i class="bi bi-flag-fill"></i> <span id="mobileDoubtCount">0</span> ragu
+                        </span>
                     </div>
                     <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-ios btn-ios-light btn-ios-sm" onclick="event.stopPropagation(); openReviewModal();" style="padding: 6px 12px !important;">
+                            <i class="bi bi-grid-3x3-gap-fill"></i> Lihat Semua
+                        </button>
                         <button class="btn btn-ios btn-ios-success btn-ios-sm" onclick="event.stopPropagation(); confirmSubmit();" style="padding: 6px 12px !important;">
                             <i class="bi bi-send-fill"></i> Kumpulkan
                         </button>
@@ -363,10 +516,55 @@
                         </div>
                     </div>
 
-                    <button class="btn btn-ios btn-ios-success w-100 mt-3" onclick="confirmSubmit()" style="padding: 14px;">
+                    <div id="doubtWarningBox" style="display:none; margin-top: 10px; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 12px; padding: 12px 14px; align-items: center; gap: 8px;">
+                        <i class="bi bi-flag-fill" style="color:#f59e0b;"></i>
+                        <span style="font-size: 12px; font-weight: 600; color: #b45309;"><span id="doubtCount">0</span> soal masih ditandai ragu-ragu</span>
+                    </div>
+
+                    <button class="btn btn-ios btn-ios-light w-100 mt-3" onclick="openReviewModal()" style="padding: 14px;">
+                        <i class="bi bi-grid-3x3-gap-fill"></i> Lihat Semua Soal
+                    </button>
+
+                    <button class="btn btn-ios btn-ios-success w-100 mt-2" onclick="confirmSubmit()" style="padding: 14px;">
                         <i class="bi bi-send-fill"></i> Kumpulkan Jawaban
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review All Questions Modal -->
+    <div class="review-modal-overlay" id="reviewModalOverlay" onclick="if(event.target===this) closeReviewModal();">
+        <div class="review-modal">
+            <div class="review-modal-header">
+                <h3><i class="bi bi-grid-3x3-gap-fill"></i> Status Semua Soal</h3>
+                <button class="review-modal-close" onclick="closeReviewModal()"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <div class="review-modal-stats">
+                <div class="review-stat answered">
+                    <span id="reviewAnsweredCount">0</span>
+                    <label>Dijawab</label>
+                </div>
+                <div class="review-stat doubt">
+                    <span id="reviewDoubtCount">0</span>
+                    <label>Ragu-ragu</label>
+                </div>
+                <div class="review-stat unanswered">
+                    <span id="reviewUnansweredCount">0</span>
+                    <label>Belum</label>
+                </div>
+            </div>
+            <div class="review-modal-tabs">
+                <button class="review-tab active" data-filter="all" onclick="filterReview('all', this)">Semua</button>
+                <button class="review-tab" data-filter="unanswered" onclick="filterReview('unanswered', this)">Belum Dijawab</button>
+                <button class="review-tab" data-filter="doubt" onclick="filterReview('doubt', this)">Ragu-ragu</button>
+                <button class="review-tab" data-filter="answered" onclick="filterReview('answered', this)">Dijawab</button>
+            </div>
+            <div class="review-modal-grid" id="reviewModalGrid"></div>
+            <div class="review-modal-footer">
+                <button class="btn btn-ios btn-ios-success w-100" onclick="confirmSubmit()">
+                    <i class="bi bi-send-fill"></i> Kumpulkan Jawaban
+                </button>
             </div>
         </div>
     </div>
@@ -398,6 +596,16 @@
         let sisaWaktu = {{ $sisaWaktu }};
         let answers = @json($jawabans);
         let raguMap = @json(array_flip($raguRagu));
+        @php
+            $soalListForJs = $soals->values()->map(function ($soal, $index) {
+                return [
+                    'index' => $index,
+                    'id' => $soal->id,
+                    'preview' => \Illuminate\Support\Str::limit(strip_tags($soal->pertanyaan), 60),
+                ];
+            });
+        @endphp
+        const soalList = @json($soalListForJs);
         const ujianId = {{ $ujian->id }};
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         let saveTimeout;
@@ -642,16 +850,122 @@
             // Mobile progress text
             const mobileProgress = document.getElementById('mobileProgress');
             if (mobileProgress) mobileProgress.textContent = `${answered}/${totalSoal} dijawab`;
+
+            // Doubt (ragu-ragu) indicator
+            const doubtCount = Object.keys(raguMap).length;
+
+            const doubtBox = document.getElementById('doubtWarningBox');
+            if (doubtBox) {
+                doubtBox.style.display = doubtCount > 0 ? 'flex' : 'none';
+                const doubtCountEl = document.getElementById('doubtCount');
+                if (doubtCountEl) doubtCountEl.textContent = doubtCount;
+            }
+
+            const mobileDoubtBadge = document.getElementById('mobileDoubtBadge');
+            if (mobileDoubtBadge) {
+                mobileDoubtBadge.style.display = doubtCount > 0 ? 'inline-flex' : 'none';
+                const mobileDoubtCountEl = document.getElementById('mobileDoubtCount');
+                if (mobileDoubtCountEl) mobileDoubtCountEl.textContent = doubtCount;
+            }
+        }
+
+        // ===== Review All Questions Modal =====
+        let reviewFilter = 'all';
+
+        function getSoalStatus(soalId) {
+            if (raguMap[soalId]) return 'doubt';
+            if (answers[soalId]) return 'answered';
+            return 'unanswered';
+        }
+
+        function openReviewModal() {
+            renderReviewModal();
+            document.getElementById('reviewModalOverlay').classList.add('show');
+        }
+
+        function closeReviewModal() {
+            document.getElementById('reviewModalOverlay').classList.remove('show');
+        }
+
+        function filterReview(filter, el) {
+            reviewFilter = filter;
+            document.querySelectorAll('.review-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            renderReviewModal();
+        }
+
+        function reviewGoToSoal(index) {
+            closeReviewModal();
+            goToSoal(index);
+        }
+
+        const statusLabel = {
+            answered: 'Dijawab',
+            doubt: 'Ragu-ragu',
+            unanswered: 'Belum dijawab',
+        };
+        const statusIcon = {
+            answered: 'bi-check-lg',
+            doubt: 'bi-flag-fill',
+            unanswered: 'bi-dash-lg',
+        };
+
+        function renderReviewModal() {
+            let answeredTotal = 0, doubtTotal = 0, unansweredTotal = 0;
+
+            soalList.forEach(s => {
+                const status = getSoalStatus(s.id);
+                if (status === 'answered') answeredTotal++;
+                else if (status === 'doubt') doubtTotal++;
+                else unansweredTotal++;
+            });
+
+            document.getElementById('reviewAnsweredCount').textContent = answeredTotal;
+            document.getElementById('reviewDoubtCount').textContent = doubtTotal;
+            document.getElementById('reviewUnansweredCount').textContent = unansweredTotal;
+
+            const grid = document.getElementById('reviewModalGrid');
+            grid.innerHTML = '';
+
+            const filtered = soalList.filter(s => {
+                if (reviewFilter === 'all') return true;
+                return getSoalStatus(s.id) === reviewFilter;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '<div class="review-empty">Tidak ada soal pada kategori ini.</div>';
+                return;
+            }
+
+            filtered.forEach(s => {
+                const status = getSoalStatus(s.id);
+                const item = document.createElement('div');
+                item.className = 'review-item ' + status;
+                item.onclick = () => reviewGoToSoal(s.index);
+                item.innerHTML = `
+                    <div class="review-item-number">${s.index + 1}</div>
+                    <div class="flex-grow-1">
+                        <div class="review-item-status"><i class="bi ${statusIcon[status]}"></i> ${statusLabel[status]}</div>
+                        <div style="font-size:12px;color:var(--text-muted);">${s.preview}</div>
+                    </div>
+                    <i class="bi bi-chevron-right" style="color:var(--text-muted);"></i>
+                `;
+                grid.appendChild(item);
+            });
         }
 
         // Confirm Submit
         async function confirmSubmit() {
             const answered = Object.values(answers).filter(v => v !== null && v !== '').length;
             const unanswered = totalSoal - answered;
+            const doubtCount = Object.keys(raguMap).length;
 
             let msg = `Anda telah menjawab ${answered} dari ${totalSoal} soal.`;
             if (unanswered > 0) {
                 msg += `\n\n⚠️ Masih ada ${unanswered} soal yang belum dijawab!`;
+            }
+            if (doubtCount > 0) {
+                msg += `\n\n🚩 Ada ${doubtCount} soal yang masih ditandai ragu-ragu. Silakan periksa kembali sebelum mengumpulkan.`;
             }
             msg += '\n\nYakin ingin mengumpulkan jawaban?';
 

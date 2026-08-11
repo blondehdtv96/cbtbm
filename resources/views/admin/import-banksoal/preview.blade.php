@@ -52,7 +52,6 @@
                         <th style="width: 70px;">Status</th>
                         <th style="width: 80px;">Mapel</th>
                         <th style="width: 65px;">Tipe</th>
-                        <th style="width: 80px;">Level</th>
                         <th style="width: 50px;">Bobot</th>
                         <th style="width: 35%;">Pertanyaan</th>
                         <th style="width: 60px;">Jawaban</th>
@@ -88,15 +87,6 @@
                             <span class="badge-ios {{ $row['tipe_soal'] === 'essay' ? 'info' : 'purple' }}" style="font-size: 10px;">
                                 {{ strtoupper($row['tipe_soal']) }}
                             </span>
-                        </td>
-                        <td>
-                            @if(in_array($row['tingkat_kesulitan'], ['mudah', 'sedang', 'sulit']))
-                                <span class="badge-ios {{ $row['tingkat_kesulitan'] == 'mudah' ? 'success' : ($row['tingkat_kesulitan'] == 'sedang' ? 'warning' : 'danger') }}" style="font-size: 10px;">
-                                    {{ ucfirst($row['tingkat_kesulitan']) }}
-                                </span>
-                            @else
-                                <span style="color: #ef4444; font-size: 11px;">{{ $row['tingkat_kesulitan'] ?: '-' }}</span>
-                            @endif
                         </td>
                         <td style="text-align: center; font-weight: 700;">{{ $row['bobot_nilai'] }}</td>
                         <td>

@@ -39,14 +39,13 @@
                 <div class="card-header">Soal Terpilih ({{ $ujian->bankSoals->count() }})</div>
                 <div class="card-body p-0">
                     <table class="table-ios">
-                        <thead><tr><th>#</th><th>Pertanyaan</th><th>Tipe</th><th>Level</th></tr></thead>
+                        <thead><tr><th>#</th><th>Pertanyaan</th><th>Tipe</th></tr></thead>
                         <tbody>
                             @foreach($ujian->bankSoals as $i => $soal)
                             <tr>
                                 <td>{{ $i + 1 }}</td>
                                 <td>{{ Str::limit($soal->pertanyaan, 60) }}</td>
                                 <td><span class="badge-ios purple">{{ strtoupper($soal->tipe_soal) }}</span></td>
-                                <td><span class="badge-ios {{ $soal->tingkat_kesulitan == 'mudah' ? 'success' : ($soal->tingkat_kesulitan == 'sedang' ? 'warning' : 'danger') }}">{{ ucfirst($soal->tingkat_kesulitan) }}</span></td>
                             </tr>
                             @endforeach
                         </tbody>
