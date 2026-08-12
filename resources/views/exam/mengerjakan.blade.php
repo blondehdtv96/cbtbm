@@ -2,14 +2,14 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title>{{ $ujian->nama_ujian }} - {{ app_name() }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
     <style>
@@ -21,6 +21,7 @@
             -moz-user-select: none;
             -ms-user-select: none;
             -webkit-touch-callout: none;
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
         /* Watermark */
@@ -42,7 +43,7 @@
             white-space: nowrap;
             transform: rotate(-35deg);
             letter-spacing: 2px;
-            font-family: 'Inter', sans-serif;
+            font-family: 'Poppins', sans-serif;
         }
 
         /* Anti-cheat blur overlay */
@@ -155,7 +156,7 @@
                 font-size: 12px !important;
             }
             .exam-sidebar {
-                padding: 10px 12px !important;
+                padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
                 border-radius: 16px 16px 0 0 !important;
             }
             .mobile-sidebar-toggle {
@@ -185,6 +186,26 @@
             }
             .progress-ios {
                 height: 6px !important;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .exam-header-info div:first-child {
+                max-width: 100px !important;
+            }
+            .exam-timer {
+                padding: 6px 10px !important;
+                font-size: 12px !important;
+            }
+            .question-card {
+                padding: 14px !important;
+            }
+            .option-pill {
+                padding: 10px 12px !important;
+                font-size: 12.5px !important;
+            }
+            .soal-nav-grid {
+                grid-template-columns: repeat(6, 1fr) !important;
             }
         }
 
@@ -384,7 +405,7 @@
     </div>
 
     <!-- Exam Body -->
-    <div class="exam-body" style="height: calc(100vh - 70px); overflow-y: auto;">
+    <div class="exam-body" style="height: calc(100vh - 70px); height: calc(100dvh - 70px); overflow-y: auto;">
         <!-- Questions Area -->
         <div class="exam-questions" id="questionsArea" style="overflow-y: auto; padding-bottom: 40px;">
             <!-- Progress Bar -->
@@ -467,7 +488,7 @@
                         <button class="btn btn-ios btn-ios-success btn-ios-sm" onclick="event.stopPropagation(); confirmSubmit();" style="padding: 6px 12px !important;">
                             <i class="bi bi-send-fill"></i> Kumpulkan
                         </button>
-                        <i class="bi bi-chevron-up" id="sidebarToggleIcon" style="transition: transform 0.3s;"></i>
+                        <i class="bi bi-chevron-down" id="sidebarToggleIcon" style="transition: transform 0.3s;"></i>
                     </div>
                 </button>
 
@@ -611,6 +632,24 @@
         let saveTimeout;
         let cheatDetected = false;
 
+        // Native alert()/confirm() dialogs can themselves flip
+        // document.hidden on some mobile browsers (Android Chrome in
+        // particular). appDialogOpen tells the anti-cheat visibility
+        // handler "this hidden state is our own dialog, not a real
+        // tab/app switch" so it doesn't count as a violation.
+        let appDialogOpen = false;
+        function showAlert(message) {
+            appDialogOpen = true;
+            window.alert(message);
+            setTimeout(() => { appDialogOpen = false; }, 500);
+        }
+        function showConfirm(message) {
+            appDialogOpen = true;
+            const result = window.confirm(message);
+            setTimeout(() => { appDialogOpen = false; }, 500);
+            return result;
+        }
+
         // Generate Watermark
         function generateWatermark() {
             const overlay = document.getElementById('watermarkOverlay');
@@ -707,7 +746,7 @@
                 })
                 .catch(err => {
                     console.error(`[SELECT ERROR] Soal ${soalId}:`, err);
-                    alert(`PERINGATAN: Jawaban soal nomor ${index + 1} gagal disimpan!\n\nSilakan pilih jawaban lagi atau hubungi pengawas.`);
+                    showAlert(`PERINGATAN: Jawaban soal nomor ${index + 1} gagal disimpan!\n\nSilakan pilih jawaban lagi atau hubungi pengawas.`);
                 });
             
             updateNavState(index, soalId);
@@ -811,7 +850,7 @@
                 })
                 .catch(err2 => {
                     console.error('[SAVE] ✗ Retry failed:', err2);
-                    alert(`GAGAL MENYIMPAN JAWABAN!\n\nSoal ID: ${soalId}\nJawaban: ${jawaban}\n\nError: ${err2.message}\n\nSilakan screenshot ini dan hubungi pengawas!`);
+                    showAlert(`GAGAL MENYIMPAN JAWABAN!\n\nSoal ID: ${soalId}\nJawaban: ${jawaban}\n\nError: ${err2.message}\n\nSilakan screenshot ini dan hubungi pengawas!`);
                     throw err2;
                 });
             });
@@ -969,7 +1008,7 @@
             }
             msg += '\n\nYakin ingin mengumpulkan jawaban?';
 
-            if (confirm(msg)) {
+            if (showConfirm(msg)) {
                 // Pastikan semua jawaban tersimpan sebelum submit
                 await saveAllAnswers();
                 // Tunggu sebentar untuk memastikan request selesai
@@ -1039,7 +1078,7 @@
                 console.log(`✓✓✓ ALL ${savedCount} ANSWERS SAVED SUCCESSFULLY ✓✓✓`);
             } catch (err) {
                 console.error('✗✗✗ ERROR SAVING ANSWERS:', err);
-                alert('PERINGATAN: Beberapa jawaban gagal disimpan! Silakan coba submit lagi.');
+                showAlert('PERINGATAN: Beberapa jawaban gagal disimpan! Silakan coba submit lagi.');
                 throw err;
             }
         }
@@ -1101,43 +1140,79 @@
         });
 
         // Tab switch detection
+        //
+        // document.hidden can flip true→false for well under a second on
+        // mobile browsers for reasons that have nothing to do with actually
+        // leaving the exam: our own alert()/confirm() dialogs (see
+        // appDialogOpen above), the on-screen keyboard, a notification
+        // shade peek, autofill prompts, etc. Counting every blip as a
+        // violation false-positives on students who never left the page —
+        // e.g. it fired while a student was just opening the review modal
+        // to check answers before submitting.
+        //
+        // A genuine tab/app switch keeps the page hidden for at least a
+        // couple of seconds (human reaction time to switch back), so we
+        // require the hidden state to persist past a grace period before
+        // it counts. Short blips are ignored entirely.
         let tabSwitchCount = 0;
         const maxTabSwitch = 2; // Allow 2 warnings before auto-submit
+        const hiddenGraceMs = 1500;
+        let hiddenTimer = null;
+
+        function registerTabSwitchViolation() {
+            tabSwitchCount++;
+            console.warn(`⚠️ Tab switch detected! Count: ${tabSwitchCount}/${maxTabSwitch}`);
+
+            if (tabSwitchCount >= maxTabSwitch) {
+                cheatDetected = true;
+                document.getElementById('cheatOverlay').classList.add('show');
+
+                // Auto submit after 10 seconds
+                setTimeout(function() {
+                    document.getElementById('antiCheatForm').submit();
+                }, 10000);
+            } else {
+                showAlert(`⚠️ PERINGATAN ${tabSwitchCount}/${maxTabSwitch}\n\nAnda terdeteksi meninggalkan halaman ujian!\n\nJika terdeteksi ${maxTabSwitch} kali, ujian akan otomatis dikumpulkan.`);
+            }
+        }
 
         document.addEventListener('visibilitychange', function() {
-            if (document.hidden && !cheatDetected) {
-                tabSwitchCount++;
-                console.warn(`⚠️ Tab switch detected! Count: ${tabSwitchCount}/${maxTabSwitch}`);
-                
-                if (tabSwitchCount >= maxTabSwitch) {
-                    cheatDetected = true;
-                    document.getElementById('cheatOverlay').classList.add('show');
-                    
-                    // Auto submit after 10 seconds
-                    setTimeout(function() {
-                        document.getElementById('antiCheatForm').submit();
-                    }, 10000);
-                } else {
-                    alert(`⚠️ PERINGATAN ${tabSwitchCount}/${maxTabSwitch}\n\nAnda terdeteksi meninggalkan halaman ujian!\n\nJika terdeteksi ${maxTabSwitch} kali, ujian akan otomatis dikumpulkan.`);
-                }
+            if (cheatDetected) return;
+
+            if (document.hidden) {
+                if (appDialogOpen) return; // our own dialog, not a real switch
+
+                clearTimeout(hiddenTimer);
+                hiddenTimer = setTimeout(function() {
+                    if (document.hidden && !appDialogOpen) {
+                        registerTabSwitchViolation();
+                    }
+                }, hiddenGraceMs);
+            } else {
+                clearTimeout(hiddenTimer);
+                hiddenTimer = null;
             }
         });
 
-        // Detect window blur (switching to another app)
-        window.addEventListener('blur', function() {
-            if (!cheatDetected && document.visibilityState === 'visible') {
-                console.warn('⚠️ Window blur detected (Alt+Tab or other app)');
-                // Optional: You can add warning here too
-            }
-        });
-
-        // Prevent opening DevTools (additional check)
+        // Detect DevTools (desktop only — outerWidth/innerWidth stay equal
+        // on mobile browsers, so this heuristic is a no-op there). Reuses
+        // the same tab-switch violation counter/flow instead of just
+        // logging, and only counts once per open (devToolsWarned) so the
+        // 1s poll doesn't spam multiple violations while it stays open.
+        let devToolsWarned = false;
         const devToolsCheck = setInterval(function() {
+            if (cheatDetected) return;
+
             const threshold = 160;
-            if (window.outerWidth - window.innerWidth > threshold || 
-                window.outerHeight - window.innerHeight > threshold) {
-                console.warn('⚠️ DevTools might be open');
-                // Optional: Add action here
+            const isOpen = window.outerWidth - window.innerWidth > threshold ||
+                window.outerHeight - window.innerHeight > threshold;
+
+            if (isOpen && !devToolsWarned) {
+                devToolsWarned = true;
+                console.warn('⚠️ DevTools detected');
+                registerTabSwitchViolation();
+            } else if (!isOpen) {
+                devToolsWarned = false;
             }
         }, 1000);
 

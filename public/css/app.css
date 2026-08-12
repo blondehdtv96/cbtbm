@@ -80,6 +80,7 @@ body {
     left: 0;
     width: var(--sidebar-width);
     height: 100vh;
+    height: 100dvh;
     background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
     z-index: 1050;
     display: flex;
