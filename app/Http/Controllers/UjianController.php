@@ -11,6 +11,7 @@ use App\Models\SesiUjian;
 use App\Models\PesertaUjian;
 use App\Models\JawabanSiswa;
 use App\Models\ActivityLog;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -332,6 +333,150 @@ class UjianController extends Controller
         $peserta = $query->orderBy('nilai', 'desc')->get();
 
         return view('ujian.print-nilai', compact('ujian', 'peserta', 'kelasName'));
+    }
+
+    /**
+     * Shared data for the formal score sheet (Excel + print) — header info,
+     * peserta list, dan hitungan menjawab/benar per peserta.
+     */
+    private function resolveNilaiResmiData(Request $request, Ujian $ujian): array
+    {
+        $ujian->load(['mapel']);
+
+        $query = $ujian->pesertaUjians()->where('status', 'selesai')
+            ->with('siswa.kelas')
+            ->withCount([
+                'jawabanSiswas as benar_count' => function ($q) {
+                    $q->where('is_correct', true);
+                },
+                'jawabanSiswas as menjawab_count' => function ($q) {
+                    $q->whereNotNull('jawaban_dipilih')->where('jawaban_dipilih', '!=', '');
+                },
+            ]);
+
+        $kelasName = 'Semua Kelas';
+        if ($request->filled('kelas_id')) {
+            $query->whereHas('siswa', function ($q) use ($request) {
+                $q->where('kelas_id', $request->kelas_id);
+            });
+            $kelas = Kelas::find($request->kelas_id);
+            if ($kelas) {
+                $kelasName = $kelas->nama_kelas;
+            }
+        }
+
+        // Urut sesuai nomor ujian (NISN) supaya konsisten dengan kartu peserta / absensi
+        $peserta = $query->get()->sortBy(fn ($p) => $p->siswa->nisn ?? $p->siswa->nis ?? '')->values();
+
+        return [
+            'ujian' => $ujian,
+            'peserta' => $peserta,
+            'kelasName' => $kelasName,
+            'namaSekolah' => Setting::getValue('kartu_nama_sekolah', 'SMK NEGERI 1'),
+            'tahunAjaran' => Setting::getValue('kartu_tahun_pelajaran', date('Y') . '/' . (date('Y') + 1)),
+            'judul' => 'NILAI ' . strtoupper($ujian->nama_ujian) . ' BERBASIS ONLINE',
+        ];
+    }
+
+    /**
+     * Lembar Nilai Resmi — Excel (format kop sekolah, sesuai contoh laporan sekolah).
+     */
+    public function nilaiResmiExcel(Request $request, Ujian $ujian)
+    {
+        $data = $this->resolveNilaiResmiData($request, $ujian);
+        ['peserta' => $peserta, 'kelasName' => $kelasName, 'namaSekolah' => $namaSekolah,
+            'tahunAjaran' => $tahunAjaran, 'judul' => $judul] = $data;
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Nilai Resmi');
+
+        $sheet->mergeCells('A1:F1');
+        $sheet->setCellValue('A1', $judul);
+        $sheet->mergeCells('A2:F2');
+        $sheet->setCellValue('A2', $namaSekolah);
+        $sheet->mergeCells('A3:F3');
+        $sheet->setCellValue('A3', 'TAHUN AJARAN ' . $tahunAjaran);
+
+        $sheet->getStyle('A1:A3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('A1:A3')->getFont()->setBold(true);
+        $sheet->getStyle('A1')->getFont()->setSize(13);
+        $sheet->getStyle('A2')->getFont()->setSize(15);
+        $sheet->getStyle('A3')->getFont()->setSize(12);
+        $sheet->getStyle('A1:F3')->getBorders()->getOutline()->setBorderStyle(Border::BORDER_MEDIUM);
+
+        $sheet->setCellValue('A5', 'KELAS');
+        $sheet->setCellValue('B5', ': '.$kelasName);
+        $sheet->setCellValue('A6', 'MATA PELAJARAN');
+        $sheet->setCellValue('B6', ': '.($ujian->mapel->nama_mapel ?? '-'));
+        $sheet->getStyle('A5:A6')->getFont()->setBold(true);
+
+        $headers = ['NO', 'NOMOR UJIAN', 'NAMA PESERTA', 'MENJAWAB', 'BENAR', 'TOTAL NILAI'];
+        $col = 'A';
+        foreach ($headers as $header) {
+            $sheet->setCellValue($col.'8', $header);
+            $col++;
+        }
+
+        $headerStyle = [
+            'font' => ['bold' => true],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+            'borders' => [
+                'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+            ],
+        ];
+        $sheet->getStyle('A8:F8')->applyFromArray($headerStyle);
+
+        $row = 9;
+        foreach ($peserta as $i => $p) {
+            $sheet->setCellValue('A'.$row, $i + 1);
+            $sheet->setCellValueExplicit('B'.$row, $p->siswa->nisn ?? $p->siswa->nis ?? '-', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValue('C'.$row, $p->siswa->nama ?? '-');
+            $sheet->setCellValue('D'.$row, $p->menjawab_count);
+            $sheet->setCellValue('E'.$row, $p->benar_count);
+            $sheet->setCellValue('F'.$row, $p->nilai);
+
+            $sheet->getStyle('A'.$row.':F'.$row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sheet->getStyle('A'.$row.':B'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $sheet->getStyle('D'.$row.':F'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            $row++;
+        }
+
+        if ($peserta->isEmpty()) {
+            $sheet->mergeCells('A9:F9');
+            $sheet->setCellValue('A9', 'Tidak ada peserta yang menyelesaikan ujian.');
+            $sheet->getStyle('A9')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        }
+
+        $sheet->getColumnDimension('A')->setWidth(6);
+        $sheet->getColumnDimension('B')->setWidth(18);
+        $sheet->getColumnDimension('C')->setWidth(32);
+        $sheet->getColumnDimension('D')->setWidth(12);
+        $sheet->getColumnDimension('E')->setWidth(10);
+        $sheet->getColumnDimension('F')->setWidth(12);
+
+        $filename = 'Nilai_Resmi_'.str_replace(' ', '_', $ujian->nama_ujian).'_'.str_replace(' ', '_', $kelasName).'_'.date('Ymd_His').'.xlsx';
+        $tempPath = storage_path('app/'.$filename);
+
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer->save($tempPath);
+
+        return response()->download($tempPath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Lembar Nilai Resmi — PDF (dicetak lewat browser, sama seperti print-nilai/kartu-peserta).
+     */
+    public function nilaiResmiPrint(Request $request, Ujian $ujian)
+    {
+        $data = $this->resolveNilaiResmiData($request, $ujian);
+
+        return view('ujian.nilai-resmi-print', $data);
     }
 
     public function showJawaban(Ujian $ujian, PesertaUjian $peserta)

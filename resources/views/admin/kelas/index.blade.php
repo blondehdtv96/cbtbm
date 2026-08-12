@@ -78,7 +78,7 @@
 @push('scripts')
 <script>
 function editKelas(k) {
-    document.getElementById('editForm').action = '/cbtbm/public/admin/kelas/' + k.id;
+    document.getElementById('editForm').action = "{{ route('admin.kelas.update', ['kelas' => '__ID__']) }}".replace('__ID__', k.id);
     document.getElementById('edit_nama_kelas').value = k.nama_kelas;
     document.getElementById('edit_jurusan_id').value = k.jurusan_id;
     document.getElementById('edit_tingkat').value = k.tingkat;

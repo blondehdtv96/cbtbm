@@ -39,6 +39,14 @@ Route::middleware(['auth', 'role:superadmin'])->prefix('superadmin')->name('supe
     Route::post('/settings/delete-image', [App\Http\Controllers\SystemSettingController::class, 'deleteImage'])->name('settings.delete-image');
     Route::post('/settings/reset', [App\Http\Controllers\SystemSettingController::class, 'reset'])->name('settings.reset');
     Route::get('/settings/clear-cache', [App\Http\Controllers\SystemSettingController::class, 'clearCache'])->name('settings.clear-cache');
+
+    // Database Backup & Restore (Superadmin only — restore overwrites live data)
+    Route::get('/backup', [App\Http\Controllers\DatabaseBackupController::class, 'index'])->name('backup.index');
+    Route::post('/backup', [App\Http\Controllers\DatabaseBackupController::class, 'store'])->name('backup.store');
+    Route::get('/backup/{filename}/download', [App\Http\Controllers\DatabaseBackupController::class, 'download'])->name('backup.download');
+    Route::delete('/backup/{filename}', [App\Http\Controllers\DatabaseBackupController::class, 'destroy'])->name('backup.destroy');
+    Route::post('/backup/upload', [App\Http\Controllers\DatabaseBackupController::class, 'upload'])->name('backup.upload');
+    Route::post('/backup/{filename}/restore', [App\Http\Controllers\DatabaseBackupController::class, 'restore'])->name('backup.restore');
 });
 
 // Admin Routes
@@ -108,6 +116,9 @@ Route::middleware(['auth', 'role:superadmin,admin'])->prefix('admin')->name('adm
     // Anti-Cheat Log
     Route::get('/anti-cheat', [AntiCheatController::class , 'index'])->name('anti-cheat.index');
 
+    // Monitoring Penggunaan Aplikasi
+    Route::get('/monitoring', [App\Http\Controllers\MonitoringController::class, 'index'])->name('monitoring.index');
+
     // System Settings
     Route::get('/settings', [App\Http\Controllers\SystemSettingController::class, 'index'])->name('settings.index');
     Route::put('/settings', [App\Http\Controllers\SystemSettingController::class, 'update'])->name('settings.update');
@@ -137,6 +148,8 @@ Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
     Route::get('/ujian/{ujian}/hasil', [UjianController::class , 'hasil'])->name('ujian.hasil');
     Route::get('/ujian/{ujian}/cetak-nilai', [UjianController::class , 'cetakNilai'])->name('ujian.cetak-nilai');
     Route::get('/ujian/{ujian}/print-nilai', [UjianController::class , 'printNilai'])->name('ujian.print-nilai');
+    Route::get('/ujian/{ujian}/nilai-resmi/excel', [UjianController::class , 'nilaiResmiExcel'])->name('ujian.nilai-resmi.excel');
+    Route::get('/ujian/{ujian}/nilai-resmi/print', [UjianController::class , 'nilaiResmiPrint'])->name('ujian.nilai-resmi.print');
     Route::get('/ujian/{ujian}/monitoring', [UjianController::class , 'monitoring'])->name('ujian.monitoring');
 
     // Jawaban peserta
@@ -158,6 +171,7 @@ Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
 Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
     Route::get('/status-peserta', [StatusPesertaController::class , 'index'])->name('status-peserta.index');
     Route::get('/status-peserta/{ujian}', [StatusPesertaController::class , 'show'])->name('status-peserta.show');
+    Route::post('/status-peserta/{ujian}/peserta/{peserta}/reset', [StatusPesertaController::class , 'resetPeserta'])->name('status-peserta.reset-peserta');
 });
 
 // Siswa Routes

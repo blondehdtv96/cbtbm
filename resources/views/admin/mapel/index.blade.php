@@ -80,7 +80,7 @@
 @push('scripts')
 <script>
 function editMapel(m) {
-    document.getElementById('editForm').action = '/cbtbm/public/admin/mapel/' + m.id;
+    document.getElementById('editForm').action = "{{ route('admin.mapel.update', ['mapel' => '__ID__']) }}".replace('__ID__', m.id);
     document.getElementById('edit_nama_mapel').value = m.nama_mapel;
     document.getElementById('edit_kode_mapel').value = m.kode_mapel;
     document.getElementById('edit_mapel_jurusan').value = m.jurusan_id || '';

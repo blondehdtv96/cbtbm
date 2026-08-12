@@ -72,6 +72,14 @@
         </div>
     </div>
 
+    @unless($ujian->isActive())
+    <div class="alert alert-warning alert-ios" style="font-size:13px;">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        Jadwal ujian ini sedang tidak aktif (di luar rentang tanggal mulai–selesai). Reset peserta tetap bisa dilakukan,
+        tapi siswa baru bisa login lagi setelah jadwal ujian diperpanjang lewat menu Ujian.
+    </div>
+    @endunless
+
     {{-- Filter --}}
     <div class="d-flex gap-2 mb-3 flex-wrap">
         <form method="GET" action="{{ route('status-peserta.show', $ujian) }}" class="d-flex gap-2 flex-grow-1 flex-wrap">
@@ -105,7 +113,9 @@
                         <th style="text-align:center;">Waktu Mulai</th>
                         <th style="text-align:center;">Waktu Selesai</th>
                         <th style="text-align:center;">Durasi</th>
+                        <th style="text-align:center;">Terjawab</th>
                         <th style="text-align:center;">Nilai</th>
+                        <th style="text-align:center;">Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -149,6 +159,13 @@
                                 —
                             @endif
                         </td>
+                        <td style="text-align:center;font-size:12px;">
+                            @if(in_array($peserta->status, ['sedang', 'selesai']))
+                                {{ $peserta->menjawab_count }} / {{ $ujian->jumlah_soal }}
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td style="text-align:center;">
                             @if($peserta->status == 'selesai' && $peserta->nilai !== null)
                                 <span style="font-weight:800;font-size:15px;color:{{ $peserta->nilai >= 70 ? '#16a34a' : '#dc2626' }};">
@@ -158,10 +175,21 @@
                                 <span style="color:#cbd5e1;">—</span>
                             @endif
                         </td>
+                        <td style="text-align:center;">
+                            @if(in_array($peserta->status, ['sedang', 'selesai']))
+                                <button type="button" class="btn btn-ios btn-ios-sm btn-ios-warning"
+                                        title="Reset peserta (kendala saat ujian)"
+                                        onclick="openResetModal({{ $peserta->id }}, '{{ addslashes($peserta->siswa->nama ?? '-') }}', '{{ $peserta->status }}', {{ $peserta->menjawab_count }})">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                                </button>
+                            @else
+                                <span style="color:#cbd5e1;">—</span>
+                            @endif
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="text-center py-4">
+                        <td colspan="10" class="text-center py-4">
                             <i class="bi bi-people" style="font-size:2rem;color:#cbd5e1;"></i>
                             <p style="color:#94a3b8;font-size:13px;margin-top:8px;">Belum ada peserta untuk ujian ini.</p>
                         </td>
@@ -180,4 +208,56 @@
         @endif
     </div>
 </div>
+
+{{-- Reset Peserta Modal --}}
+<div class="modal fade modal-ios" id="resetModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Peserta Ujian</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="POST" id="resetForm">
+            @csrf
+            <div class="modal-body">
+                <p>
+                    Reset <strong id="resetNamaSiswa"></strong> (status saat ini: <span id="resetStatusSekarang"></span>,
+                    sudah menjawab <strong id="resetMenjawab"></strong> soal).
+                </p>
+                <div class="alert alert-info alert-ios" style="font-size:12px;">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    Semua jawaban yang sudah tersimpan <strong>tidak akan dihapus</strong> — siswa melanjutkan persis
+                    dari posisi terakhir dia mengerjakan. Status dikembalikan ke "Sedang" dan siswa bisa login lagi.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label-ios">Sisa Waktu Baru (menit)</label>
+                    <input type="number" name="menit" id="resetMenit" class="form-control-ios w-100" min="1" max="{{ $ujian->durasi_menit }}" value="{{ $ujian->durasi_menit }}" required>
+                    <small class="text-muted">Maks. {{ $ujian->durasi_menit }} menit (durasi ujian ini).</small>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label-ios">Catatan Kendala (opsional)</label>
+                    <textarea name="catatan" class="form-control-ios w-100" rows="2" placeholder="mis. Listrik padam, koneksi terputus, dsb."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ios btn-ios-light" data-bs-dismiss="modal">Batal</button>
+                <button type="submit" class="btn btn-ios btn-ios-warning">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset Peserta
+                </button>
+            </div>
+        </form>
+    </div></div>
+</div>
+
+@push('scripts')
+<script>
+function openResetModal(pesertaId, namaSiswa, status, menjawab) {
+    document.getElementById('resetForm').action = "{{ url('status-peserta/'.$ujian->id.'/peserta') }}/" + pesertaId + "/reset";
+    document.getElementById('resetNamaSiswa').textContent = namaSiswa;
+    document.getElementById('resetStatusSekarang').textContent = status === 'selesai' ? 'Selesai' : 'Sedang Mengerjakan';
+    document.getElementById('resetMenjawab').textContent = menjawab;
+    document.getElementById('resetMenit').value = {{ $ujian->durasi_menit }};
+    new bootstrap.Modal(document.getElementById('resetModal')).show();
+}
+</script>
+@endpush
 @endsection

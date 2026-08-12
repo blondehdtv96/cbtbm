@@ -126,7 +126,7 @@
 </div>
 
 @if($logs->hasPages())
-<div class="d-flex justify-content-center mt-4">
+<div class="d-flex justify-content-center mt-4 pagination-ios">
     {{ $logs->links() }}
 </div>
 @endif

@@ -29,11 +29,30 @@
             <a href="{{ route('ujian.cetak-nilai', ['ujian' => $ujian->id, 'kelas_id' => request('kelas_id')]) }}" class="btn btn-ios btn-ios-success d-flex align-items-center gap-2">
                 <i class="bi bi-file-earmark-excel-fill"></i> Excel
             </a>
-            
+
             <!-- Print Button -->
             <a href="{{ route('ujian.print-nilai', ['ujian' => $ujian->id, 'kelas_id' => request('kelas_id')]) }}" target="_blank" class="btn btn-ios btn-ios-primary d-flex align-items-center gap-2">
                 <i class="bi bi-printer-fill"></i> Print
             </a>
+
+            <!-- Dropdown: Lembar Nilai Resmi (kop sekolah) -->
+            <div class="dropdown">
+                <button class="btn btn-ios btn-ios-light d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-file-earmark-ruled-fill"></i> Lembar Nilai Resmi
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="{{ route('ujian.nilai-resmi.excel', ['ujian' => $ujian->id, 'kelas_id' => request('kelas_id')]) }}">
+                            <i class="bi bi-file-earmark-excel-fill text-success"></i> Excel
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('ujian.nilai-resmi.print', ['ujian' => $ujian->id, 'kelas_id' => request('kelas_id')]) }}" target="_blank">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger"></i> PDF / Print
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
 
     </div>

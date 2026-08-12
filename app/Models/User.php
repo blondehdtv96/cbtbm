@@ -13,7 +13,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name', 'email', 'password', 'plain_password', 'role', 'last_login', 'is_active',
-        'login_attempts', 'locked_until', 'avatar',
+        'login_attempts', 'locked_until', 'avatar', 'last_seen_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -24,6 +24,7 @@ class User extends Authenticatable
         'last_login' => 'datetime',
         'locked_until' => 'datetime',
         'is_active' => 'boolean',
+        'last_seen_at' => 'datetime',
     ];
 
     public function siswa()

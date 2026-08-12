@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Ujian;
 use App\Models\PesertaUjian;
+use App\Models\JawabanSiswa;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 
 class StatusPesertaController extends Controller
@@ -47,6 +49,9 @@ class StatusPesertaController extends Controller
         $ujian->load(['mapel', 'guru', 'sesiUjian', 'kelasList']);
 
         $query = PesertaUjian::with(['siswa.kelas.jurusan'])
+            ->withCount(['jawabanSiswas as menjawab_count' => function ($q) {
+                $q->whereNotNull('jawaban_dipilih')->where('jawaban_dipilih', '!=', '');
+            }])
             ->where('ujian_id', $ujian->id)
             ->whereHas('siswa');
 
@@ -86,5 +91,67 @@ class StatusPesertaController extends Controller
         }
 
         return view('status-peserta.show', compact('ujian', 'pesertaList', 'stats'));
+    }
+
+    /**
+     * Reset seorang peserta yang terkendala saat mengerjakan ujian (device
+     * crash, listrik/koneksi putus, salah ke-submit oleh anti-cheat, dll).
+     *
+     * Peserta dikembalikan ke status 'sedang' dan diberi sisa waktu baru
+     * supaya bisa login lagi dan melanjutkan. Jawaban yang sudah tersimpan
+     * (jawaban_siswas) TIDAK disentuh sama sekali — hasil pengerjaan siswa
+     * tetap sesuai posisi terakhir dia mengerjakan, tidak direset ke nol.
+     */
+    public function resetPeserta(Request $request, Ujian $ujian, PesertaUjian $peserta)
+    {
+        if ($peserta->ujian_id !== $ujian->id) {
+            abort(404);
+        }
+
+        if (!in_array($peserta->status, ['sedang', 'selesai'])) {
+            return back()->with('error', 'Peserta ini belum memulai ujian, tidak ada yang perlu direset.');
+        }
+
+        $request->validate([
+            'menit' => 'required|integer|min:1|max:'.$ujian->durasi_menit,
+            'catatan' => 'nullable|string|max:500',
+        ], [
+            'menit.max' => 'Sisa waktu tidak boleh melebihi durasi ujian ('.$ujian->durasi_menit.' menit).',
+        ]);
+
+        $peserta->load('siswa');
+        $statusSebelumnya = $peserta->status;
+        $menitBaru = (int) $request->menit;
+
+        $peserta->update([
+            'status' => 'sedang',
+            'waktu_mulai' => now()->subMinutes($ujian->durasi_menit - $menitBaru),
+            'waktu_selesai' => null,
+            'nilai' => null,
+        ]);
+
+        $jumlahTerjawab = JawabanSiswa::where('peserta_ujian_id', $peserta->id)
+            ->whereNotNull('jawaban_dipilih')
+            ->where('jawaban_dipilih', '!=', '')
+            ->count();
+
+        ActivityLog::log('reset_peserta', 'ujian', sprintf(
+            'Reset peserta ujian "%s" pada %s (status sebelumnya: %s → sedang, sisa waktu baru: %d menit, %d jawaban tersimpan dipertahankan)%s',
+            $peserta->siswa->nama ?? '-',
+            $ujian->nama_ujian,
+            $statusSebelumnya,
+            $menitBaru,
+            $jumlahTerjawab,
+            $request->filled('catatan') ? '. Catatan: '.$request->catatan : ''
+        ), [
+            'peserta_ujian_id' => $peserta->id,
+            'siswa_id' => $peserta->siswa_id,
+            'status_sebelumnya' => $statusSebelumnya,
+            'menit_baru' => $menitBaru,
+            'jawaban_dipertahankan' => $jumlahTerjawab,
+            'catatan' => $request->catatan,
+        ]);
+
+        return back()->with('success', "Peserta {$peserta->siswa->nama} berhasil direset. Semua jawaban yang sudah tersimpan tetap dipertahankan — siswa bisa login kembali dan melanjutkan dengan sisa waktu {$menitBaru} menit.");
     }
 }

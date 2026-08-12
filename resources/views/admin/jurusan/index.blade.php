@@ -72,7 +72,7 @@
 @push('scripts')
 <script>
 function editJurusan(j) {
-    document.getElementById('editForm').action = '/cbtbm/public/admin/jurusan/' + j.id;
+    document.getElementById('editForm').action = "{{ route('admin.jurusan.update', ['jurusan' => '__ID__']) }}".replace('__ID__', j.id);
     document.getElementById('edit_nama').value = j.nama_jurusan;
     document.getElementById('edit_kode').value = j.kode_jurusan;
     document.getElementById('edit_deskripsi').value = j.deskripsi || '';

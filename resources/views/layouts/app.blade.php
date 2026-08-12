@@ -120,6 +120,14 @@
                     </a>
 
                     <div class="menu-label">SISTEM</div>
+                    <a href="{{ route('admin.monitoring.index') }}" class="menu-item {{ request()->routeIs('admin.monitoring.*') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up"></i>
+                        <span>Monitoring Sistem</span>
+                    </a>
+                    <a href="{{ route('superadmin.backup.index') }}" class="menu-item {{ request()->routeIs('superadmin.backup.*') ? 'active' : '' }}">
+                        <i class="bi bi-database-fill-down"></i>
+                        <span>Backup Database</span>
+                    </a>
                     <a href="{{ route('superadmin.settings.index') }}" class="menu-item {{ request()->routeIs('superadmin.settings.*') ? 'active' : '' }}">
                         <i class="bi bi-gear-fill"></i>
                         <span>Pengaturan Sistem</span>
@@ -199,6 +207,10 @@
                     </a>
 
                     <div class="menu-label">SISTEM</div>
+                    <a href="{{ route('admin.monitoring.index') }}" class="menu-item {{ request()->routeIs('admin.monitoring.*') ? 'active' : '' }}">
+                        <i class="bi bi-graph-up"></i>
+                        <span>Monitoring Sistem</span>
+                    </a>
                     <a href="{{ route('admin.settings.index') }}" class="menu-item {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}">
                         <i class="bi bi-gear-fill"></i>
                         <span>Pengaturan Sistem</span>
