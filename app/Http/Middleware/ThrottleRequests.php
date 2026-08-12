@@ -36,11 +36,23 @@ class ThrottleRequests
 
     /**
      * Resolve request signature.
+     *
+     * Keyed by user+IP when authenticated. For pre-auth requests (login),
+     * keyed by the submitted account identifier+IP instead of IP alone —
+     * many students share one public IP behind a school's NAT gateway, so
+     * an IP-only key would let a handful of login attempts lock out the
+     * entire school for a minute at a time.
      */
     protected function resolveRequestSignature(Request $request): string
     {
         if ($user = $request->user()) {
             return sha1($user->id . '|' . $request->ip());
+        }
+
+        $identifier = $request->input('nisn') ?? $request->input('email');
+
+        if ($identifier) {
+            return sha1('login|' . strtolower($identifier) . '|' . $request->ip());
         }
 
         return sha1($request->ip());

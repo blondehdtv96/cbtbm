@@ -959,16 +959,19 @@ php artisan queue:retry all       # retry semua job gagal
 
 ### Rate Limiting
 
-Middleware `App\Http\Middleware\ThrottleRequests` (alias `throttle.custom`) aktif di endpoint yang rawan disalahgunakan/dibanjiri, per kombinasi user+IP:
+Middleware `App\Http\Middleware\ThrottleRequests` (alias `throttle.custom`) aktif di endpoint yang rawan disalahgunakan/dibanjiri:
 
-| Route | Limit |
-|---|---|
-| `POST /login` | 5x / menit |
-| `POST /exam/{ujian}/verify-token` | 10x / menit |
-| `POST /exam/{ujian}/save-jawaban` | 120x / menit |
-| `POST /exam/{ujian}/anti-cheat` | 30x / menit |
+| Route | Limit | Key |
+|---|---|---|
+| `POST /login` | 5x / menit | `nisn` + IP |
+| `POST /staff/login` | 5x / menit | `email` + IP |
+| `POST /exam/{ujian}/verify-token` | 10x / menit | user + IP |
+| `POST /exam/{ujian}/save-jawaban` | 120x / menit | user + IP |
+| `POST /exam/{ujian}/anti-cheat` | 30x / menit | user + IP |
 
-Nginx (`nginx-optimization.conf`) juga punya rate limiting di layer web server sebagai lapisan pertahanan tambahan (`limit_req_zone` untuk `login` dan `save`).
+`/login` dan `/staff/login` dikunci per **akun yang di-submit + IP**, bukan IP saja. Ini disengaja: request belum ter-autentikasi saat itu (belum ada `$request->user()`), dan siswa dalam satu sekolah biasanya berbagi satu IP publik lewat NAT gateway sekolah — kalau kuncinya IP saja, 5 percobaan gagal dari siapa pun di jaringan itu akan mengunci login untuk **seluruh sekolah** selama satu menit, berulang terus selama jam-jam sibuk login (persis gejala `429 Too many requests` yang muncul saat testing). Endpoint lain sudah otentik sehingga aman dikunci per user+IP.
+
+Nginx (`nginx-optimization.conf`) juga punya rate limiting di layer web server sebagai lapisan pertahanan tambahan (`limit_req_zone` untuk `login` dan `save`). Karena Nginx hanya bisa mengunci per-IP (tidak tahu akun mana yang login), limitnya sengaja dibuat longgar (120r/m untuk login, burst 60; 600r/m untuk save, burst 100) — cukup untuk menahan flood/DoS asli, tapi tidak memblokir banyak siswa yang wajar-wajar saja berbagi satu IP sekolah. Proteksi presisi per-akun tetap ada di layer Laravel di atas.
 
 ### Monitoring
 
