@@ -34,10 +34,40 @@ class ManajemenSiswaController extends Controller
             $query->where('kelas_id', $request->kelas_id);
         }
 
-        $siswas = $query->orderBy('nama')->paginate(20);
+        $sortBy = $request->get('sort', 'nama');
+        $sortDir = strtolower($request->get('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        switch ($sortBy) {
+            case 'nisn':
+            case 'nis':
+            case 'nama':
+                $query->orderBy($sortBy, $sortDir);
+                break;
+            case 'kelas':
+                $query->select('siswas.*')
+                    ->join('kelas', 'kelas.id', '=', 'siswas.kelas_id')
+                    ->orderBy('kelas.nama_kelas', $sortDir);
+                break;
+            case 'status':
+                $query->select('siswas.*')
+                    ->leftJoin('users', 'users.id', '=', 'siswas.user_id')
+                    ->orderBy('users.is_active', $sortDir);
+                break;
+            case 'last_login':
+                $query->select('siswas.*')
+                    ->leftJoin('users', 'users.id', '=', 'siswas.user_id')
+                    ->orderBy('users.last_login', $sortDir);
+                break;
+            default:
+                $sortBy = 'nama';
+                $query->orderBy('nama', $sortDir);
+                break;
+        }
+
+        $siswas = $query->paginate(20)->withQueryString();
         $kelasList = Kelas::with('jurusan')->where('is_active', true)->orderBy('nama_kelas')->get();
 
-        return view('admin.siswa.index', compact('siswas', 'kelasList'));
+        return view('admin.siswa.index', compact('siswas', 'kelasList', 'sortBy', 'sortDir'));
     }
 
     /**

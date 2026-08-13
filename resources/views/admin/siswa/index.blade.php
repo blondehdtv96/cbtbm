@@ -4,6 +4,33 @@
 @section('page-title', 'Manajemen Siswa')
 @section('page-subtitle', 'Kelola data dan akun siswa')
 
+@push('styles')
+<style>
+    .sort-link {
+        color: inherit;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+    }
+    .sort-link:hover {
+        color: var(--primary);
+    }
+    .sort-link .sort-icon {
+        font-size: 9px;
+        opacity: 0.3;
+    }
+    .sort-link.active {
+        color: var(--primary);
+        font-weight: 700;
+    }
+    .sort-link.active .sort-icon {
+        opacity: 1;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="fade-in">
     <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
@@ -69,19 +96,25 @@
         </div>
     </div>
 
+    @php
+        $sortLink = function ($column) use ($sortBy, $sortDir) {
+            $dir = ($sortBy === $column && $sortDir === 'asc') ? 'desc' : 'asc';
+            return request()->fullUrlWithQuery(['sort' => $column, 'dir' => $dir, 'page' => null]);
+        };
+    @endphp
     <div class="card-ios">
         <div class="card-body p-0" style="overflow-x: auto;">
             <table class="table-ios" style="min-width: 800px;">
                 <thead>
                     <tr>
                         <th style="width: 50px;">No</th>
-                        <th>NISN</th>
-                        <th>NIS</th>
-                        <th>Nama Lengkap</th>
-                        <th>Kelas</th>
+                        <th><a href="{{ $sortLink('nisn') }}" class="sort-link {{ $sortBy === 'nisn' ? 'active' : '' }}">NISN <i class="bi bi-caret-{{ $sortBy === 'nisn' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
+                        <th><a href="{{ $sortLink('nis') }}" class="sort-link {{ $sortBy === 'nis' ? 'active' : '' }}">NIS <i class="bi bi-caret-{{ $sortBy === 'nis' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
+                        <th><a href="{{ $sortLink('nama') }}" class="sort-link {{ $sortBy === 'nama' ? 'active' : '' }}">Nama Lengkap <i class="bi bi-caret-{{ $sortBy === 'nama' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
+                        <th><a href="{{ $sortLink('kelas') }}" class="sort-link {{ $sortBy === 'kelas' ? 'active' : '' }}">Kelas <i class="bi bi-caret-{{ $sortBy === 'kelas' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
                         <th>Password</th>
-                        <th>Status</th>
-                        <th>Login Terakhir</th>
+                        <th><a href="{{ $sortLink('status') }}" class="sort-link {{ $sortBy === 'status' ? 'active' : '' }}">Status <i class="bi bi-caret-{{ $sortBy === 'status' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
+                        <th><a href="{{ $sortLink('last_login') }}" class="sort-link {{ $sortBy === 'last_login' ? 'active' : '' }}">Login Terakhir <i class="bi bi-caret-{{ $sortBy === 'last_login' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
                         <th>Aksi</th>
                     </tr>
                 </thead>
