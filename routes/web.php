@@ -62,6 +62,7 @@ Route::middleware(['auth', 'role:superadmin,admin'])->prefix('admin')->name('adm
     Route::get('/siswa-manage/export', [ManajemenSiswaController::class , 'export'])->name('siswa.export');
     Route::get('/siswa-manage/create', [ManajemenSiswaController::class , 'create'])->name('siswa.create');
     Route::post('/siswa-manage', [ManajemenSiswaController::class , 'store'])->name('siswa.store');
+    Route::delete('/siswa-manage/bulk-destroy', [ManajemenSiswaController::class , 'bulkDestroy'])->name('siswa.bulk-destroy');
     Route::get('/siswa-manage/{siswa}/edit', [ManajemenSiswaController::class , 'edit'])->name('siswa.edit');
     Route::put('/siswa-manage/{siswa}', [ManajemenSiswaController::class , 'update'])->name('siswa.update');
     Route::delete('/siswa-manage/{siswa}', [ManajemenSiswaController::class , 'destroy'])->name('siswa.destroy');

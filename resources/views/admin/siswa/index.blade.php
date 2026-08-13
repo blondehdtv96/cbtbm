@@ -38,6 +38,7 @@
             <input type="text" name="search" class="form-control-ios" placeholder="Cari nama/NISN/NIS..." value="{{ request('search') }}" style="width: 220px;">
             <select name="kelas_id" class="form-select-ios" style="width: 180px;">
                 <option value="">Semua Kelas</option>
+                <option value="none" {{ request('kelas_id') === 'none' ? 'selected' : '' }}>Tanpa Kelas</option>
                 @foreach($kelasList as $kelas)
                     <option value="{{ $kelas->id }}" {{ request('kelas_id') == $kelas->id ? 'selected' : '' }}>
                         {{ $kelas->nama_kelas }}
@@ -61,7 +62,7 @@
 
     {{-- Stats --}}
     <div class="row g-3 mb-4">
-        <div class="col-sm-4">
+        <div class="col-6 col-sm-3">
             <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.1); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 14px;">
                 <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center;">
                     <i class="bi bi-people-fill" style="color: #2563eb; font-size: 20px;"></i>
@@ -72,7 +73,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-4">
+        <div class="col-6 col-sm-3">
             <div style="background: rgba(34, 197, 94, 0.06); border: 1px solid rgba(34, 197, 94, 0.1); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 14px;">
                 <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(34, 197, 94, 0.12); display: flex; align-items: center; justify-content: center;">
                     <i class="bi bi-check-circle-fill" style="color: #22c55e; font-size: 20px;"></i>
@@ -83,7 +84,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-4">
+        <div class="col-6 col-sm-3">
             <div style="background: rgba(239, 68, 68, 0.06); border: 1px solid rgba(239, 68, 68, 0.1); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 14px;">
                 <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(239, 68, 68, 0.12); display: flex; align-items: center; justify-content: center;">
                     <i class="bi bi-x-circle-fill" style="color: #ef4444; font-size: 20px;"></i>
@@ -94,6 +95,19 @@
                 </div>
             </div>
         </div>
+        <div class="col-6 col-sm-3">
+            <a href="{{ route('admin.siswa.index', ['kelas_id' => 'none']) }}" style="text-decoration: none; display: block;">
+                <div style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.1); border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 42px; height: 42px; border-radius: 12px; background: rgba(245, 158, 11, 0.12); display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-exclamation-triangle-fill" style="color: #d97706; font-size: 20px;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 22px; font-weight: 800; color: #d97706;">{{ $tanpaKelasCount }}</div>
+                        <div style="font-size: 12px; color: var(--text-secondary);">Tanpa Kelas</div>
+                    </div>
+                </div>
+            </a>
+        </div>
     </div>
 
     @php
@@ -102,11 +116,38 @@
             return request()->fullUrlWithQuery(['sort' => $column, 'dir' => $dir, 'page' => null]);
         };
     @endphp
+
+    {{-- Bulk Delete Floating Bar (hidden by default) --}}
+    <div id="bulkActionBar" style="display:none; position:sticky; top:12px; z-index:100; background:linear-gradient(135deg,#ef4444,#dc2626); color:white; border-radius:14px; padding:12px 20px; margin-bottom:14px; box-shadow:0 8px 30px rgba(239,68,68,0.35); align-items:center; justify-content:space-between; gap:12px;">
+        <div style="display:flex; align-items:center; gap:10px; font-weight:700; font-size:14px;">
+            <i class="bi bi-check2-square" style="font-size:18px;"></i>
+            <span id="bulkCountText">0 siswa dipilih</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" onclick="clearSelection()" style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:white; padding:7px 16px; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer;">
+                <i class="bi bi-x-lg me-1"></i> Batal
+            </button>
+            <button type="button" onclick="confirmBulkDelete()" style="background:white; border:none; color:#dc2626; padding:7px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+                <i class="bi bi-trash-fill me-1"></i> Hapus Terpilih
+            </button>
+        </div>
+    </div>
+
+    {{-- Hidden bulk delete form --}}
+    <form id="bulkDeleteForm" method="POST" action="{{ route('admin.siswa.bulk-destroy') }}" style="display:none;">
+        @csrf
+        @method('DELETE')
+        <div id="bulkIdsContainer"></div>
+    </form>
+
     <div class="card-ios">
         <div class="card-body p-0" style="overflow-x: auto;">
             <table class="table-ios" style="min-width: 800px;">
                 <thead>
                     <tr>
+                        <th style="width: 40px; text-align: center;">
+                            <input type="checkbox" id="selectAll" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" title="Pilih Semua">
+                        </th>
                         <th style="width: 50px;">No</th>
                         <th><a href="{{ $sortLink('nisn') }}" class="sort-link {{ $sortBy === 'nisn' ? 'active' : '' }}">NISN <i class="bi bi-caret-{{ $sortBy === 'nisn' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
                         <th><a href="{{ $sortLink('nis') }}" class="sort-link {{ $sortBy === 'nis' ? 'active' : '' }}">NIS <i class="bi bi-caret-{{ $sortBy === 'nis' && $sortDir === 'desc' ? 'down' : 'up' }}-fill sort-icon"></i></a></th>
@@ -121,6 +162,9 @@
                 <tbody>
                     @forelse($siswas as $idx => $siswa)
                     <tr>
+                        <td style="text-align: center;">
+                            <input type="checkbox" class="siswa-checkbox" value="{{ $siswa->id }}" style="width:16px; height:16px; accent-color:#2563eb; cursor:pointer;" onchange="updateBulkBar()">
+                        </td>
                         <td>{{ $siswas->firstItem() + $idx }}</td>
                         <td>
                             <code style="font-weight: 700; background: rgba(37, 99, 235, 0.08); padding: 3px 8px; border-radius: 6px; color: var(--primary);">{{ $siswa->nisn }}</code>
@@ -128,7 +172,11 @@
                         <td><code>{{ $siswa->nis }}</code></td>
                         <td><strong>{{ $siswa->nama }}</strong></td>
                         <td>
-                            <span class="badge-ios primary">{{ $siswa->kelas->nama_kelas ?? '-' }}</span>
+                            @if($siswa->kelas)
+                                <span class="badge-ios primary">{{ $siswa->kelas->nama_kelas }}</span>
+                            @else
+                                <span class="badge-ios danger">Tanpa Kelas</span>
+                            @endif
                         </td>
                         <td>
                             @if($siswa->user && $siswa->user->plain_password)
@@ -175,7 +223,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="text-center py-4">
+                        <td colspan="10" class="text-center py-4">
                             <div class="empty-state">
                                 <i class="bi bi-people"></i>
                                 <h5>Belum ada data siswa</h5>
@@ -198,3 +246,54 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function getSelectedSiswaIds() {
+    return [...document.querySelectorAll('.siswa-checkbox:checked')].map(cb => cb.value);
+}
+
+function updateBulkBar() {
+    const selected = getSelectedSiswaIds();
+    const bar = document.getElementById('bulkActionBar');
+    if (selected.length > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('bulkCountText').textContent = selected.length + ' siswa dipilih';
+    } else {
+        bar.style.display = 'none';
+    }
+    const all = document.querySelectorAll('.siswa-checkbox');
+    const selectAll = document.getElementById('selectAll');
+    selectAll.indeterminate = selected.length > 0 && selected.length < all.length;
+    selectAll.checked = selected.length === all.length && all.length > 0;
+}
+
+document.getElementById('selectAll').addEventListener('change', function () {
+    document.querySelectorAll('.siswa-checkbox').forEach(cb => cb.checked = this.checked);
+    updateBulkBar();
+});
+
+function clearSelection() {
+    document.querySelectorAll('.siswa-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('selectAll').checked = false;
+    updateBulkBar();
+}
+
+function confirmBulkDelete() {
+    const ids = getSelectedSiswaIds();
+    if (ids.length === 0) return;
+    if (!confirm(`Yakin hapus ${ids.length} siswa yang dipilih? Akun login juga akan terhapus dan tindakan ini tidak bisa dibatalkan.`)) return;
+
+    const container = document.getElementById('bulkIdsContainer');
+    container.innerHTML = '';
+    ids.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'ids[]';
+        input.value = id;
+        container.appendChild(input);
+    });
+    document.getElementById('bulkDeleteForm').submit();
+}
+</script>
+@endpush

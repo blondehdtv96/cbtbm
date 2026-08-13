@@ -31,7 +31,11 @@ class ManajemenSiswaController extends Controller
         }
 
         if ($request->filled('kelas_id')) {
-            $query->where('kelas_id', $request->kelas_id);
+            if ($request->kelas_id === 'none') {
+                $query->whereNull('kelas_id');
+            } else {
+                $query->where('kelas_id', $request->kelas_id);
+            }
         }
 
         $sortBy = $request->get('sort', 'nama');
@@ -45,7 +49,7 @@ class ManajemenSiswaController extends Controller
                 break;
             case 'kelas':
                 $query->select('siswas.*')
-                    ->join('kelas', 'kelas.id', '=', 'siswas.kelas_id')
+                    ->leftJoin('kelas', 'kelas.id', '=', 'siswas.kelas_id')
                     ->orderBy('kelas.nama_kelas', $sortDir);
                 break;
             case 'status':
@@ -66,8 +70,9 @@ class ManajemenSiswaController extends Controller
 
         $siswas = $query->paginate(20)->withQueryString();
         $kelasList = Kelas::with('jurusan')->where('is_active', true)->orderBy('nama_kelas')->get();
+        $tanpaKelasCount = Siswa::whereNull('kelas_id')->count();
 
-        return view('admin.siswa.index', compact('siswas', 'kelasList', 'sortBy', 'sortDir'));
+        return view('admin.siswa.index', compact('siswas', 'kelasList', 'sortBy', 'sortDir', 'tanpaKelasCount'));
     }
 
     /**
@@ -213,6 +218,42 @@ class ManajemenSiswaController extends Controller
     }
 
     /**
+     * Hapus banyak siswa (+ user terkait) sekaligus
+     */
+    public function bulkDestroy(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return back()->with('error', 'Tidak ada siswa yang dipilih.');
+        }
+
+        $siswas = Siswa::with('user')->whereIn('id', $ids)->get();
+        $count = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($siswas as $siswa) {
+                if ($siswa->user) {
+                    $siswa->user->delete();
+                }
+                $siswa->delete();
+                $count++;
+            }
+
+            DB::commit();
+
+            ActivityLog::log('delete', 'siswa', "Menghapus {$count} siswa terpilih (bulk delete)");
+
+            return redirect()->route('admin.siswa.index')->with('success', "{$count} siswa berhasil dihapus!");
+        }
+        catch (\Exception $e) {
+            DB::rollback();
+            return back()->with('error', 'Gagal menghapus data terpilih: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Toggle aktif/nonaktif
      */
     public function toggleActive(Siswa $siswa)
@@ -260,7 +301,11 @@ class ManajemenSiswaController extends Controller
         }
 
         if ($request->filled('kelas_id')) {
-            $query->where('kelas_id', $request->kelas_id);
+            if ($request->kelas_id === 'none') {
+                $query->whereNull('kelas_id');
+            } else {
+                $query->where('kelas_id', $request->kelas_id);
+            }
         }
 
         $siswas = $query->orderBy('nama')->get();
