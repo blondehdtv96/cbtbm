@@ -35,17 +35,20 @@ class SystemSettingController extends Controller
     public function update(Request $request)
     {
         try {
-            foreach ($request->except(['_token', '_method']) as $key => $value) {
-                $setting = SystemSetting::where('key', $key)->first();
-                
-                if (!$setting) {
-                    continue;
-                }
+            // Iterate over every known setting (not just fields present in the
+            // request) — an unchecked checkbox is omitted from the POST body
+            // entirely, so relying on $request->except() silently skips
+            // turning boolean toggles (Anti-Cheat, Auto Submit, etc.) off.
+            foreach (SystemSetting::all() as $setting) {
+                $key = $setting->key;
 
-                // Handle file uploads
-                if ($setting->type === 'image' && $request->hasFile($key)) {
+                if ($setting->type === 'image') {
+                    if (!$request->hasFile($key)) {
+                        continue; // no new upload — leave the existing image alone
+                    }
+
                     $file = $request->file($key);
-                    
+
                     // Validate image
                     $request->validate([
                         $key => 'image|mimes:jpeg,png,jpg,gif|max:2048'
@@ -57,12 +60,13 @@ class SystemSettingController extends Controller
                     }
 
                     // Store new image
-                    $path = $file->store('settings', 'public');
-                    $value = $path;
-                }
-                // Handle boolean
-                elseif ($setting->type === 'boolean') {
+                    $value = $file->store('settings', 'public');
+                } elseif ($setting->type === 'boolean') {
                     $value = $request->has($key) ? '1' : '0';
+                } elseif ($request->has($key)) {
+                    $value = $request->input($key);
+                } else {
+                    continue; // field not part of this submission
                 }
 
                 // Update setting

@@ -90,7 +90,7 @@
         .mobile-sidebar-toggle {
             display: none;
         }
-        @media (max-width: 768px) {
+        @media (max-width: 767.98px) {
             .exam-header {
                 padding: 10px 14px !important;
             }
@@ -160,15 +160,26 @@
                 border-radius: 16px 16px 0 0 !important;
             }
             .mobile-sidebar-toggle {
+                position: relative;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 0;
+                padding: 14px 0 0;
                 cursor: pointer;
                 background: none;
                 border: none;
                 width: 100%;
                 color: var(--text-primary);
+            }
+            .mobile-sheet-handle {
+                position: absolute;
+                top: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 36px;
+                height: 4px;
+                border-radius: 2px;
+                background: var(--border-color);
             }
             .sidebar-content-mobile {
                 display: none;
@@ -409,6 +420,10 @@
         <!-- Questions Area -->
         <div class="exam-questions" id="questionsArea" style="overflow-y: auto; padding-bottom: 40px;">
             <!-- Progress Bar -->
+            <div class="d-flex align-items-center justify-content-between mb-2" style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">
+                <span>Progres Pengerjaan</span>
+                <span id="progressLabel">0%</span>
+            </div>
             <div class="progress-ios mb-4">
                 <div class="progress-bar" id="progressBar" style="width: 0%"></div>
             </div>
@@ -418,6 +433,10 @@
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <div class="d-flex align-items-center gap-2 gap-md-3">
                         <div class="question-number">{{ $index + 1 }}</div>
+                        <span class="question-meta-chip d-none d-sm-inline-flex">
+                            <i class="bi {{ $soal->tipe_soal === 'essay' ? 'bi-pencil-square' : 'bi-list-check' }}"></i>
+                            {{ $soal->tipe_soal === 'essay' ? 'Esai' : 'Pilihan Ganda' }}
+                        </span>
                     </div>
                     <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 12px; background: rgba(245, 158, 11, 0.08); border-radius: 10px; font-size: 12px; font-weight: 600; color: #f59e0b;">
                         <input type="checkbox" class="ragu-checkbox" data-index="{{ $index }}" data-soal-id="{{ $soal->id }}"
@@ -442,6 +461,7 @@
                          id="option-{{ $index }}-{{ $opsi->opsi_label }}">
                         <div class="option-label">{{ $opsi->opsi_label }}</div>
                         <div class="flex-grow-1">{{ $opsi->isi_opsi }}</div>
+                        <div class="option-check"><i class="bi bi-check-lg"></i></div>
                     </div>
                     @endforeach
                 @elseif($soal->tipe_soal === 'essay')
@@ -475,6 +495,7 @@
             <div style="position: sticky; top: 0;">
                 <!-- Mobile Toggle Button -->
                 <button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()">
+                    <div class="mobile-sheet-handle d-md-none"></div>
                     <div class="d-flex align-items-center gap-2">
                         <span style="font-weight: 700; font-size: 13px;" id="mobileProgress">0/{{ $soals->count() }} dijawab</span>
                         <span id="mobileDoubtBadge" style="display:none; font-weight: 700; font-size: 11px; color: #b45309; background: rgba(245,158,11,0.15); padding: 3px 8px; border-radius: 10px;">
@@ -530,10 +551,12 @@
                     </div>
 
                     <div style="margin-top: 16px;">
-                        <div style="background: var(--bg-secondary); border-radius: 12px; padding: 16px; border: 1px solid var(--border-color);">
-                            <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">PROGRESS</div>
-                            <div style="font-size: 24px; font-weight: 800;" id="answeredCount">0</div>
-                            <div style="font-size: 12px; color: var(--text-muted);">dari {{ $soals->count() }} soal dijawab</div>
+                        <div style="background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: var(--border-radius); padding: 18px; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);">
+                            <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.85); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px;">
+                                <i class="bi bi-bar-chart-fill"></i> Progres
+                            </div>
+                            <div style="font-size: 30px; font-weight: 800; color: #fff; line-height: 1;" id="answeredCount">0</div>
+                            <div style="font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 4px;">dari {{ $soals->count() }} soal dijawab</div>
                         </div>
                     </div>
 
@@ -631,6 +654,8 @@
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         let saveTimeout;
         let cheatDetected = false;
+        const antiCheatEnabled = @json($antiCheatEnabled);
+        const maxTabSwitch = {{ max(1, $maxTabSwitch) }}; // from admin setting "Maksimal Pindah Tab"
 
         // Native alert()/confirm() dialogs can themselves flip
         // document.hidden on some mobile browsers (Android Chrome in
@@ -884,7 +909,10 @@
             const answered = Object.values(answers).filter(v => v !== null && v !== '').length;
             const countEl = document.getElementById('answeredCount');
             if (countEl) countEl.textContent = answered;
-            document.getElementById('progressBar').style.width = ((answered / totalSoal) * 100) + '%';
+            const percent = Math.round((answered / totalSoal) * 100);
+            document.getElementById('progressBar').style.width = percent + '%';
+            const progressLabel = document.getElementById('progressLabel');
+            if (progressLabel) progressLabel.textContent = percent + '%';
 
             // Mobile progress text
             const mobileProgress = document.getElementById('mobileProgress');
@@ -1095,49 +1123,53 @@
         // ANTI-CHEAT SYSTEM - ENABLED
         // =============================================
         
-        console.log('%c⚠️ ANTI-CHEAT SYSTEM ACTIVE', 'color: #dc2626; font-weight: bold; font-size: 12px;');
-        
-        // Prevent right-click
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
+        console.log(antiCheatEnabled
+            ? '%c⚠️ ANTI-CHEAT SYSTEM ACTIVE' : '%cAnti-cheat system disabled by admin setting',
+            'color: #dc2626; font-weight: bold; font-size: 12px;');
 
-        // Prevent text selection
-        document.addEventListener('selectstart', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // Prevent copy
-        document.addEventListener('copy', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // Prevent cut
-        document.addEventListener('cut', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // Prevent keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-            if (e.keyCode === 123 || // F12
-                (e.ctrlKey && e.shiftKey && e.keyCode === 73) || // Ctrl+Shift+I
-                (e.ctrlKey && e.shiftKey && e.keyCode === 74) || // Ctrl+Shift+J
-                (e.ctrlKey && e.keyCode === 85)) { // Ctrl+U
+        if (antiCheatEnabled) {
+            // Prevent right-click
+            document.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
                 return false;
-            }
-            
-            // Prevent Ctrl+C, Ctrl+X, Ctrl+A
-            if (e.ctrlKey && (e.keyCode === 67 || e.keyCode === 88 || e.keyCode === 65)) {
+            });
+
+            // Prevent text selection
+            document.addEventListener('selectstart', function(e) {
                 e.preventDefault();
                 return false;
-            }
-        });
+            });
+
+            // Prevent copy
+            document.addEventListener('copy', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Prevent cut
+            document.addEventListener('cut', function(e) {
+                e.preventDefault();
+                return false;
+            });
+
+            // Prevent keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                // Prevent F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+                if (e.keyCode === 123 || // F12
+                    (e.ctrlKey && e.shiftKey && e.keyCode === 73) || // Ctrl+Shift+I
+                    (e.ctrlKey && e.shiftKey && e.keyCode === 74) || // Ctrl+Shift+J
+                    (e.ctrlKey && e.keyCode === 85)) { // Ctrl+U
+                    e.preventDefault();
+                    return false;
+                }
+
+                // Prevent Ctrl+C, Ctrl+X, Ctrl+A
+                if (e.ctrlKey && (e.keyCode === 67 || e.keyCode === 88 || e.keyCode === 65)) {
+                    e.preventDefault();
+                    return false;
+                }
+            });
+        }
 
         // Tab switch detection
         //
@@ -1155,7 +1187,6 @@
         // require the hidden state to persist past a grace period before
         // it counts. Short blips are ignored entirely.
         let tabSwitchCount = 0;
-        const maxTabSwitch = 2; // Allow 2 warnings before auto-submit
         const hiddenGraceMs = 1500;
         let hiddenTimer = null;
 
@@ -1176,45 +1207,49 @@
             }
         }
 
-        document.addEventListener('visibilitychange', function() {
-            if (cheatDetected) return;
+        let devToolsCheck = null;
 
-            if (document.hidden) {
-                if (appDialogOpen) return; // our own dialog, not a real switch
+        if (antiCheatEnabled) {
+            document.addEventListener('visibilitychange', function() {
+                if (cheatDetected) return;
 
-                clearTimeout(hiddenTimer);
-                hiddenTimer = setTimeout(function() {
-                    if (document.hidden && !appDialogOpen) {
-                        registerTabSwitchViolation();
-                    }
-                }, hiddenGraceMs);
-            } else {
-                clearTimeout(hiddenTimer);
-                hiddenTimer = null;
-            }
-        });
+                if (document.hidden) {
+                    if (appDialogOpen) return; // our own dialog, not a real switch
 
-        // Detect DevTools (desktop only — outerWidth/innerWidth stay equal
-        // on mobile browsers, so this heuristic is a no-op there). Reuses
-        // the same tab-switch violation counter/flow instead of just
-        // logging, and only counts once per open (devToolsWarned) so the
-        // 1s poll doesn't spam multiple violations while it stays open.
-        let devToolsWarned = false;
-        const devToolsCheck = setInterval(function() {
-            if (cheatDetected) return;
+                    clearTimeout(hiddenTimer);
+                    hiddenTimer = setTimeout(function() {
+                        if (document.hidden && !appDialogOpen) {
+                            registerTabSwitchViolation();
+                        }
+                    }, hiddenGraceMs);
+                } else {
+                    clearTimeout(hiddenTimer);
+                    hiddenTimer = null;
+                }
+            });
 
-            const threshold = 160;
-            const isOpen = window.outerWidth - window.innerWidth > threshold ||
-                window.outerHeight - window.innerHeight > threshold;
+            // Detect DevTools (desktop only — outerWidth/innerWidth stay equal
+            // on mobile browsers, so this heuristic is a no-op there). Reuses
+            // the same tab-switch violation counter/flow instead of just
+            // logging, and only counts once per open (devToolsWarned) so the
+            // 1s poll doesn't spam multiple violations while it stays open.
+            let devToolsWarned = false;
+            devToolsCheck = setInterval(function() {
+                if (cheatDetected) return;
 
-            if (isOpen && !devToolsWarned) {
-                devToolsWarned = true;
-                console.warn('⚠️ DevTools detected');
-                registerTabSwitchViolation();
-            } else if (!isOpen) {
-                devToolsWarned = false;
-            }
-        }, 1000);
+                const threshold = 160;
+                const isOpen = window.outerWidth - window.innerWidth > threshold ||
+                    window.outerHeight - window.innerHeight > threshold;
+
+                if (isOpen && !devToolsWarned) {
+                    devToolsWarned = true;
+                    console.warn('⚠️ DevTools detected');
+                    registerTabSwitchViolation();
+                } else if (!isOpen) {
+                    devToolsWarned = false;
+                }
+            }, 1000);
+        }
 
         // Cleanup interval on page unload
         window.addEventListener('beforeunload', function() {

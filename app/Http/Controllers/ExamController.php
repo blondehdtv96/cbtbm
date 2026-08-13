@@ -7,6 +7,7 @@ use App\Models\PesertaUjian;
 use App\Models\JawabanSiswa;
 use App\Models\BankSoal;
 use App\Models\ActivityLog;
+use App\Models\SystemSetting;
 use App\Services\CacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -190,8 +191,12 @@ class ExamController extends Controller
             ->pluck('bank_soal_id')
             ->toArray();
 
+        $antiCheatEnabled = SystemSetting::get('anti_cheat_enabled', '1') == '1';
+        $maxTabSwitch = (int) SystemSetting::get('max_tab_switch', 2);
+
         return view('exam.mengerjakan', compact(
-            'ujian', 'peserta', 'soals', 'jawabans', 'raguRagu', 'sisaWaktu', 'waktuBerakhir'
+            'ujian', 'peserta', 'soals', 'jawabans', 'raguRagu', 'sisaWaktu', 'waktuBerakhir',
+            'antiCheatEnabled', 'maxTabSwitch'
         ));
     }
 
