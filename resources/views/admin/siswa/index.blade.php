@@ -20,6 +20,9 @@
             <button type="submit" class="btn btn-ios btn-ios-light"><i class="bi bi-search"></i></button>
         </form>
         <div class="d-flex gap-2">
+            <a href="{{ route('admin.siswa.export', request()->only(['search', 'kelas_id'])) }}" class="btn btn-ios btn-ios-light">
+                <i class="bi bi-download"></i> Download Data
+            </a>
             <a href="{{ route('admin.import-siswa.index') }}" class="btn btn-ios btn-ios-success">
                 <i class="bi bi-cloud-arrow-up-fill"></i> Import
             </a>

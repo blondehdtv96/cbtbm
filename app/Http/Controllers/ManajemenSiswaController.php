@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ManajemenSiswaController extends Controller
 {
@@ -210,6 +211,82 @@ class ManajemenSiswaController extends Controller
         $generatedPassword = session('generated_password');
 
         return view('admin.siswa.credential', compact('user', 'siswa', 'generatedPassword'));
+    }
+
+    /**
+     * Export data siswa ke Excel (mengikuti filter pencarian/kelas yang aktif)
+     */
+    public function export(Request $request)
+    {
+        $query = Siswa::with(['user', 'kelas.jurusan']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nama', 'like', "%{$search}%")
+                    ->orWhere('nisn', 'like', "%{$search}%")
+                    ->orWhere('nis', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('kelas_id')) {
+            $query->where('kelas_id', $request->kelas_id);
+        }
+
+        $siswas = $query->orderBy('nama')->get();
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Data Siswa');
+
+        $headers = ['No', 'NISN', 'NIS', 'Nama Lengkap', 'Kelas', 'Username', 'Password'];
+        foreach ($headers as $col => $header) {
+            $cell = chr(65 + $col) . '1';
+            $sheet->setCellValue($cell, $header);
+            $sheet->getStyle($cell)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+                'fill' => [
+                    'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                    'startColor' => ['rgb' => '2563EB'],
+                ],
+                'alignment' => [
+                    'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                ],
+            ]);
+        }
+
+        $row = 2;
+        foreach ($siswas as $idx => $siswa) {
+            $sheet->setCellValue('A' . $row, $idx + 1);
+            $sheet->setCellValueExplicit('B' . $row, $siswa->nisn, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('C' . $row, $siswa->nis, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValue('D' . $row, $siswa->nama);
+            $sheet->setCellValue('E' . $row, $siswa->kelas->nama_kelas ?? '-');
+            $sheet->setCellValueExplicit('F' . $row, $siswa->nisn, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValue('G' . $row, $siswa->user->plain_password ?? '-');
+
+            $sheet->getStyle('G' . $row)->applyFromArray([
+                'font' => ['bold' => true, 'color' => ['rgb' => 'DC2626']],
+            ]);
+
+            $row++;
+        }
+
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        ActivityLog::log('export', 'siswa', "Export data siswa ke Excel ({$siswas->count()} data)");
+
+        $fileName = 'data_siswa_' . date('Ymd_His') . '.xlsx';
+        $tempPath = storage_path('app/' . $fileName);
+
+        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+        $writer->save($tempPath);
+
+        return response()->download($tempPath, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     /**

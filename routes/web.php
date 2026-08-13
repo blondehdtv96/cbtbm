@@ -59,6 +59,7 @@ Route::middleware(['auth', 'role:superadmin,admin'])->prefix('admin')->name('adm
 
     // Manajemen Siswa
     Route::get('/siswa-manage', [ManajemenSiswaController::class , 'index'])->name('siswa.index');
+    Route::get('/siswa-manage/export', [ManajemenSiswaController::class , 'export'])->name('siswa.export');
     Route::get('/siswa-manage/create', [ManajemenSiswaController::class , 'create'])->name('siswa.create');
     Route::post('/siswa-manage', [ManajemenSiswaController::class , 'store'])->name('siswa.store');
     Route::get('/siswa-manage/{siswa}/edit', [ManajemenSiswaController::class , 'edit'])->name('siswa.edit');
