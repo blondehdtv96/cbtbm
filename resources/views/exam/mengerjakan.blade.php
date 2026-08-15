@@ -1210,15 +1210,27 @@
         let devToolsCheck = null;
 
         if (antiCheatEnabled) {
-            document.addEventListener('visibilitychange', function() {
+            // document.hidden alone misses a very common way of leaving the
+            // exam: Alt+Tab (or clicking) to another app while the browser
+            // window stays open on screen. The tab is technically still
+            // "visible" in that case, so visibilitychange never fires — only
+            // window blur/focus do. We treat "hidden OR unfocused" as the
+            // student having left, and drive both event types through the
+            // same debounce/guard logic so a genuine tab switch (which fires
+            // both) doesn't double up.
+            function isAwayFromExam() {
+                return document.hidden || !document.hasFocus();
+            }
+
+            function handleAwayCheck() {
                 if (cheatDetected) return;
 
-                if (document.hidden) {
+                if (isAwayFromExam()) {
                     if (appDialogOpen) return; // our own dialog, not a real switch
 
                     clearTimeout(hiddenTimer);
                     hiddenTimer = setTimeout(function() {
-                        if (document.hidden && !appDialogOpen) {
+                        if (isAwayFromExam() && !appDialogOpen) {
                             registerTabSwitchViolation();
                         }
                     }, hiddenGraceMs);
@@ -1226,7 +1238,11 @@
                     clearTimeout(hiddenTimer);
                     hiddenTimer = null;
                 }
-            });
+            }
+
+            document.addEventListener('visibilitychange', handleAwayCheck);
+            window.addEventListener('blur', handleAwayCheck);
+            window.addEventListener('focus', handleAwayCheck);
 
             // Detect DevTools (desktop only — outerWidth/innerWidth stay equal
             // on mobile browsers, so this heuristic is a no-op there). Reuses

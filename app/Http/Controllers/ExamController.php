@@ -433,9 +433,17 @@ class ExamController extends Controller
 
                 if ($peserta) {
                     // Log violation
-                    ActivityLog::log('anti_cheat_violation', 'ujian', 
-                        "Pelanggaran anti-cheat: {$request->violation_type} - {$request->detail}");
-                    
+                    ActivityLog::log('cheat_detected', 'ujian',
+                        "Pelanggaran anti-cheat: {$request->violation_type} - {$request->detail}",
+                        [
+                            'siswa_nama' => $siswa->nama,
+                            'siswa_nisn' => $siswa->nisn,
+                            'ujian_nama' => $ujian->nama_ujian,
+                            'kelas' => $siswa->kelas->nama_kelas ?? '-',
+                            'violation_type' => $request->violation_type,
+                            'detail' => $request->detail,
+                        ]);
+
                     // Submit exam automatically
                     $this->submitExam($ujian, $peserta);
                 }
