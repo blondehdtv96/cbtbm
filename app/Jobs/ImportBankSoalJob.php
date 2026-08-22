@@ -41,16 +41,20 @@ class ImportBankSoalJob implements ShouldQueue
 
         $successCount = 0;
         $importedSoals = [];
+        $failedRows = [];
 
-        try {
-            DB::transaction(function () use (&$successCount, &$importedSoals) {
-                foreach ($this->rows as $row) {
+        // Setiap baris diproses dalam transaksi sendiri: satu baris gagal tidak
+        // boleh me-rollback baris lain yang sudah berhasil disimpan sebelumnya.
+        foreach ($this->rows as $row) {
+            try {
+                DB::transaction(function () use ($row, &$importedSoals) {
                     $bankSoal = BankSoal::create([
                         'mapel_id' => $row['mapel']->id,
                         'guru_id' => $this->guruId,
                         'tipe_soal' => $row['tipe_soal'],
                         'bobot_nilai' => $row['bobot_nilai'],
                         'pertanyaan' => $row['pertanyaan'],
+                        'gambar_soal' => $row['gambar_soal_path'] ?? null,
                         'status' => 'aktif',
                     ]);
 
@@ -60,6 +64,7 @@ class ImportBankSoalJob implements ShouldQueue
                                 'bank_soal_id' => $bankSoal->id,
                                 'opsi_label' => $opsi['label'],
                                 'isi_opsi' => $opsi['isi'],
+                                'gambar_opsi' => $opsi['gambar_path'] ?? null,
                                 'is_correct' => $opsi['is_correct'],
                             ]);
                         }
@@ -71,25 +76,36 @@ class ImportBankSoalJob implements ShouldQueue
                         'tipe_soal' => $row['tipe_soal'],
                         'mapel' => $row['mapel']->nama_mapel,
                     ];
+                });
 
-                    $successCount++;
-                }
-            });
+                $successCount++;
+            } catch (\Throwable $e) {
+                Log::warning('ImportBankSoalJob: baris gagal, dilewati', [
+                    'batch_id' => $this->importBatchId,
+                    'row' => $row['row'] ?? null,
+                    'error' => $e->getMessage(),
+                ]);
 
+                $failedRows[] = [
+                    'row' => $row['row'] ?? null,
+                    'pertanyaan' => Str::limit($row['pertanyaan'], 60),
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        try {
             $batch->update([
                 'status' => 'completed',
                 'success_count' => $successCount,
                 'imported_soals' => $importedSoals,
+                'failed_rows' => $failedRows,
             ]);
 
-            ActivityLog::log('import', 'bank_soal', "Import {$successCount} soal dari file Excel (background)");
-        } catch (\Exception $e) {
-            Log::error('ImportBankSoalJob failed', ['batch_id' => $this->importBatchId, 'error' => $e->getMessage()]);
-
-            $batch->update([
-                'status' => 'failed',
-                'error_message' => $e->getMessage(),
-            ]);
+            ActivityLog::log('import', 'bank_soal', "Import {$successCount} soal dari file Excel (background)" . (!empty($failedRows) ? ", " . count($failedRows) . ' baris gagal' : ''));
+        } catch (\Throwable $e) {
+            Log::error('ImportBankSoalJob: gagal menyimpan status batch', ['batch_id' => $this->importBatchId, 'error' => $e->getMessage()]);
+            $batch->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
         }
     }
 }

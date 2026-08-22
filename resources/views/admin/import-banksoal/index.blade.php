@@ -10,11 +10,16 @@
         {{-- Upload Card --}}
         <div class="col-lg-7">
             <div class="card-ios">
-                <div class="card-header d-flex align-items-center justify-content-between">
+                <div class="card-header d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <span><i class="bi bi-cloud-arrow-up-fill me-2"></i>Upload File Soal</span>
-                    <a href="{{ route('admin.import-banksoal.template') }}" class="btn btn-ios btn-ios-sm btn-ios-success">
-                        <i class="bi bi-download"></i> Download Template
-                    </a>
+                    <div class="d-flex gap-2">
+                        <a href="{{ route('admin.soal-gambar.index') }}" class="btn btn-ios btn-ios-sm btn-ios-light">
+                            <i class="bi bi-images"></i> Pustaka Gambar Soal
+                        </a>
+                        <a href="{{ route('admin.import-banksoal.template') }}" class="btn btn-ios btn-ios-sm btn-ios-success">
+                            <i class="bi bi-download"></i> Download Template
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     {{-- Info Box --}}
@@ -32,6 +37,8 @@
                                     <li>Kolom wajib Essay: <strong>Kode Mapel</strong>, <strong>Pertanyaan</strong></li>
                                     <li>Soal akan dikaitkan ke <strong>guru yang sedang login</strong></li>
                                     <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong> (maks. 5MB)</li>
+                                    <li>Ingin melampirkan gambar? Upload dulu file-nya ke <strong>Pustaka Gambar Soal</strong>, baru ketik <strong>nama filenya</strong> (mis. <code>soal1.jpg</code>) di kolom Gambar Soal / Gambar Opsi A-E — <strong>jangan tempel/paste gambar langsung ke sel Excel</strong>, itu tidak akan terbaca</li>
+                                    <li>Kalau soal/opsi hanya berupa gambar tanpa teks, kolom Pertanyaan/Opsi boleh dikosongkan asal kolom Gambar-nya diisi</li>
                                 </ul>
                             </div>
                         </div>

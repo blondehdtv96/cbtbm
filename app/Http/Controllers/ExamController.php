@@ -11,6 +11,7 @@ use App\Models\SystemSetting;
 use App\Services\CacheService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class ExamController extends Controller
@@ -186,6 +187,11 @@ class ExamController extends Controller
             ->pluck('jawaban_dipilih', 'bank_soal_id')
             ->toArray();
 
+        $jawabanFiles = JawabanSiswa::where('peserta_ujian_id', $peserta->id)
+            ->whereNotNull('jawaban_file')
+            ->pluck('jawaban_file', 'bank_soal_id')
+            ->toArray();
+
         $raguRagu = JawabanSiswa::where('peserta_ujian_id', $peserta->id)
             ->where('is_ragu', true)
             ->pluck('bank_soal_id')
@@ -195,7 +201,7 @@ class ExamController extends Controller
         $maxTabSwitch = (int) SystemSetting::get('max_tab_switch', 2);
 
         return view('exam.mengerjakan', compact(
-            'ujian', 'peserta', 'soals', 'jawabans', 'raguRagu', 'sisaWaktu', 'waktuBerakhir',
+            'ujian', 'peserta', 'soals', 'jawabans', 'jawabanFiles', 'raguRagu', 'sisaWaktu', 'waktuBerakhir',
             'antiCheatEnabled', 'maxTabSwitch'
         ));
     }
@@ -266,6 +272,92 @@ class ExamController extends Controller
     }
 
     /**
+     * Save an image as the answer for an essay question (e.g. photo of
+     * handwritten work), following the same upload convention used for
+     * question images in BankSoalController (image|max:2048, 'public' disk).
+     * Kept as its own multipart endpoint separate from the JSON autosave in
+     * saveJawaban(), which is throttled much tighter for its high call rate.
+     */
+    public function saveJawabanFile(Request $request, Ujian $ujian)
+    {
+        $request->validate([
+            'bank_soal_id' => 'required|integer|exists:bank_soals,id',
+            'jawaban_file' => 'required|image|max:2048',
+        ]);
+
+        $siswa = auth()->user()->siswa;
+        $peserta = PesertaUjian::where('ujian_id', $ujian->id)
+            ->where('siswa_id', $siswa->id)
+            ->where('status', 'sedang')
+            ->first();
+
+        if (!$peserta) {
+            return response()->json(['error' => 'Sesi tidak valid'], 403);
+        }
+
+        $soal = BankSoal::find($request->bank_soal_id);
+        if (!$soal || $soal->tipe_soal !== 'essay') {
+            return response()->json(['error' => 'Soal ini tidak mendukung jawaban gambar'], 422);
+        }
+
+        $existing = JawabanSiswa::where('peserta_ujian_id', $peserta->id)
+            ->where('bank_soal_id', $request->bank_soal_id)
+            ->first();
+
+        $path = $request->file('jawaban_file')->store('jawaban-images', 'public');
+
+        if ($existing && $existing->jawaban_file) {
+            Storage::disk('public')->delete($existing->jawaban_file);
+        }
+
+        JawabanSiswa::updateOrCreate(
+            ['peserta_ujian_id' => $peserta->id, 'bank_soal_id' => $request->bank_soal_id],
+            ['jawaban_file' => $path]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Gambar jawaban berhasil diunggah',
+            'data' => [
+                'bank_soal_id' => (int) $request->bank_soal_id,
+                'jawaban_file' => $path,
+                'url' => asset('storage/' . $path),
+            ],
+        ]);
+    }
+
+    /**
+     * Remove an uploaded answer image (student wants to retake the photo).
+     */
+    public function deleteJawabanFile(Request $request, Ujian $ujian)
+    {
+        $request->validate([
+            'bank_soal_id' => 'required|integer|exists:bank_soals,id',
+        ]);
+
+        $siswa = auth()->user()->siswa;
+        $peserta = PesertaUjian::where('ujian_id', $ujian->id)
+            ->where('siswa_id', $siswa->id)
+            ->where('status', 'sedang')
+            ->first();
+
+        if (!$peserta) {
+            return response()->json(['error' => 'Sesi tidak valid'], 403);
+        }
+
+        $jawaban = JawabanSiswa::where('peserta_ujian_id', $peserta->id)
+            ->where('bank_soal_id', $request->bank_soal_id)
+            ->first();
+
+        if ($jawaban && $jawaban->jawaban_file) {
+            Storage::disk('public')->delete($jawaban->jawaban_file);
+            $jawaban->update(['jawaban_file' => null]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    /**
      * Submit exam
      */
     public function submit(Request $request, Ujian $ujian)
@@ -319,7 +411,7 @@ class ExamController extends Controller
 
                 $totalBobot += $soal->bobot_nilai;
 
-                if (empty($jawaban->jawaban_dipilih)) {
+                if (empty($jawaban->jawaban_dipilih) && empty($jawaban->jawaban_file)) {
                     $kosongCount++;
                     $emptyIds[] = $jawaban->id;
                     continue;

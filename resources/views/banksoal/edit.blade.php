@@ -43,6 +43,11 @@
                                 <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700;">{{ $label }}</div>
                                 <input type="hidden" name="opsi_label[]" value="{{ $label }}">
                                 <input type="text" name="opsi_isi[]" class="form-control-ios flex-grow-1" value="{{ $existingOptions->get($label)->isi_opsi ?? '' }}">
+                                @if($existingOptions->get($label)->gambar_opsi ?? null)
+                                    <img src="{{ asset('storage/' . $existingOptions->get($label)->gambar_opsi) }}" alt="Gambar opsi {{ $label }}" style="width: 36px; height: 36px; object-fit: cover; border-radius: 8px;">
+                                @endif
+                                <input type="hidden" name="opsi_gambar_existing[]" value="{{ $existingOptions->get($label)->gambar_opsi ?? '' }}">
+                                <input type="file" name="opsi_gambar[]" class="form-control-ios" style="max-width: 200px;" accept="image/jpeg,image/png">
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">
                                     <input type="checkbox" name="opsi_correct[]" value="{{ $i }}" {{ ($existingOptions->get($label)->is_correct ?? false) ? 'checked' : '' }}> Benar
                                 </label>

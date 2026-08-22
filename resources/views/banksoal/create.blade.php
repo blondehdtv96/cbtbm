@@ -55,6 +55,7 @@
                                 <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">{{ $label }}</div>
                                 <input type="hidden" name="opsi_label[]" value="{{ $label }}">
                                 <input type="text" name="opsi_isi[]" class="form-control-ios flex-grow-1" placeholder="Isi opsi {{ $label }}">
+                                <input type="file" name="opsi_gambar[]" class="form-control-ios" style="max-width: 200px;" accept="image/jpeg,image/png">
                                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; white-space: nowrap; font-size: 13px; font-weight: 600;">
                                     <input type="checkbox" name="opsi_correct[]" value="{{ $i }}"> Benar
                                 </label>

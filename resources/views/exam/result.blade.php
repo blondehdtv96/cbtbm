@@ -549,8 +549,12 @@
                     <div class="stat-value">
                         @php
                             $jawabans_count = \App\Models\JawabanSiswa::where('peserta_ujian_id', $peserta->id)
-                                ->whereNotNull('jawaban_dipilih')
-                                ->where('jawaban_dipilih', '!=', '')
+                                ->where(function ($q) {
+                                    $q->whereNotNull('jawaban_dipilih')->where('jawaban_dipilih', '!=', '');
+                                })
+                                ->orWhere(function ($q) use ($peserta) {
+                                    $q->where('peserta_ujian_id', $peserta->id)->whereNotNull('jawaban_file');
+                                })
                                 ->count();
                         @endphp
                         {{ $jawabans_count }}

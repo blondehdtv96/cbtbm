@@ -15,6 +15,7 @@ use App\Http\Controllers\KartuPesertaController;
 use App\Http\Controllers\StatusPesertaController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\AntiCheatController;
+use App\Http\Controllers\SoalGambarLibraryController;
 
 /* |-------------------------------------------------------------------------- | Web Routes |-------------------------------------------------------------------------- */
 
@@ -90,6 +91,11 @@ Route::middleware(['auth', 'role:superadmin,admin'])->prefix('admin')->name('adm
     Route::post('/import-banksoal/preview', [ImportBankSoalController::class , 'preview'])->name('import-banksoal.preview');
     Route::post('/import-banksoal/import', [ImportBankSoalController::class , 'import'])->name('import-banksoal.import');
     Route::get('/import-banksoal/result', [ImportBankSoalController::class , 'result'])->name('import-banksoal.result');
+
+    // Pustaka Gambar Soal (untuk import bank soal via Excel dengan gambar)
+    Route::get('/soal-gambar', [SoalGambarLibraryController::class , 'index'])->name('soal-gambar.index');
+    Route::post('/soal-gambar', [SoalGambarLibraryController::class , 'store'])->name('soal-gambar.store');
+    Route::delete('/soal-gambar/{soalGambar}', [SoalGambarLibraryController::class , 'destroy'])->name('soal-gambar.destroy');
 
     // Jurusan
     Route::get('/jurusan', [ManajemenController::class , 'jurusanIndex'])->name('jurusan.index');
@@ -187,6 +193,8 @@ Route::middleware(['auth', 'role:siswa'])->prefix('exam')->name('exam.')->group(
     Route::post('/{ujian}/verify-token', [ExamController::class , 'verifyToken'])->middleware('throttle.custom:10,1')->name('verify-token');
     Route::get('/{ujian}/mengerjakan', [ExamController::class , 'mengerjakan'])->name('mengerjakan');
     Route::post('/{ujian}/save-jawaban', [ExamController::class , 'saveJawaban'])->middleware('throttle.custom:120,1')->name('save-jawaban');
+    Route::post('/{ujian}/save-jawaban-file', [ExamController::class , 'saveJawabanFile'])->middleware('throttle.custom:30,1')->name('save-jawaban-file');
+    Route::delete('/{ujian}/save-jawaban-file', [ExamController::class , 'deleteJawabanFile'])->middleware('throttle.custom:30,1')->name('delete-jawaban-file');
     Route::post('/{ujian}/submit', [ExamController::class , 'submit'])->name('submit');
     Route::get('/{ujian}/result', [ExamController::class , 'result'])->name('result');
     Route::post('/{ujian}/anti-cheat', [ExamController::class , 'antiCheatViolation'])->middleware('throttle.custom:30,1')->name('anti-cheat');

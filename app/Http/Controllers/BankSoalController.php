@@ -82,6 +82,11 @@ class BankSoalController extends Controller
             'bobot_nilai' => 'required|integer|min:1',
             'pertanyaan' => 'required|string',
             'gambar_soal' => 'nullable|image|max:2048',
+            'opsi_gambar.*' => 'nullable|image|mimes:jpg,jpeg,png|max:1024',
+        ], [
+            'opsi_gambar.*.image' => 'File gambar opsi harus berupa gambar.',
+            'opsi_gambar.*.mimes' => 'Format gambar opsi harus jpg, jpeg, atau png.',
+            'opsi_gambar.*.max' => 'Ukuran gambar opsi maksimal 1MB.',
         ]);
 
         $guru = auth()->user()->guru;
@@ -104,13 +109,20 @@ class BankSoalController extends Controller
             $labels = $request->input('opsi_label', []);
             $contents = $request->input('opsi_isi', []);
             $corrects = $request->input('opsi_correct', []);
+            $opsiGambars = $request->file('opsi_gambar', []);
 
             foreach ($labels as $i => $label) {
                 if (!empty($contents[$i])) {
+                    $gambarOpsi = null;
+                    if (!empty($opsiGambars[$i])) {
+                        $gambarOpsi = $opsiGambars[$i]->store('soal-gambar/opsi', 'public');
+                    }
+
                     OpsiJawaban::create([
                         'bank_soal_id' => $bankSoal->id,
                         'opsi_label' => $label,
                         'isi_opsi' => $contents[$i],
+                        'gambar_opsi' => $gambarOpsi,
                         'is_correct' => in_array($i, $corrects),
                     ]);
                 }
@@ -144,6 +156,11 @@ class BankSoalController extends Controller
             'tipe_soal' => 'required|in:pg,essay,pg_kompleks,menjodohkan',
             'bobot_nilai' => 'required|integer|min:1',
             'pertanyaan' => 'required|string',
+            'opsi_gambar.*' => 'nullable|image|mimes:jpg,jpeg,png|max:1024',
+        ], [
+            'opsi_gambar.*.image' => 'File gambar opsi harus berupa gambar.',
+            'opsi_gambar.*.mimes' => 'Format gambar opsi harus jpg, jpeg, atau png.',
+            'opsi_gambar.*.max' => 'Ukuran gambar opsi maksimal 1MB.',
         ]);
 
         $data = $request->only(['mapel_id', 'tipe_soal', 'bobot_nilai', 'pertanyaan', 'status']);
@@ -161,13 +178,21 @@ class BankSoalController extends Controller
             $labels = $request->input('opsi_label', []);
             $contents = $request->input('opsi_isi', []);
             $corrects = $request->input('opsi_correct', []);
+            $opsiGambars = $request->file('opsi_gambar', []);
+            $existingGambars = $request->input('opsi_gambar_existing', []);
 
             foreach ($labels as $i => $label) {
                 if (!empty($contents[$i])) {
+                    $gambarOpsi = $existingGambars[$i] ?? null;
+                    if (!empty($opsiGambars[$i])) {
+                        $gambarOpsi = $opsiGambars[$i]->store('soal-gambar/opsi', 'public');
+                    }
+
                     OpsiJawaban::create([
                         'bank_soal_id' => $banksoal->id,
                         'opsi_label' => $label,
                         'isi_opsi' => $contents[$i],
+                        'gambar_opsi' => $gambarOpsi,
                         'is_correct' => in_array($i, $corrects),
                     ]);
                 }

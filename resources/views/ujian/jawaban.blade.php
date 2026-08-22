@@ -95,9 +95,29 @@
                             <div class="mb-3">
                                 <div class="form-label text-muted">Jawaban Siswa:</div>
                                 @if($soal->tipe_soal === 'essay')
-                                    <div class="p-3 rounded border {{ !$jawaban->jawaban_dipilih || trim($jawaban->jawaban_dipilih) === '' ? 'bg-light text-muted' : 'bg-white' }}" style="min-height: 80px; font-size: 15px;">
-                                        {!! !$jawaban->jawaban_dipilih || trim($jawaban->jawaban_dipilih) === '' ? '<em>Tidak ada jawaban</em>' : nl2br(e($jawaban->jawaban_dipilih)) !!}
-                                    </div>
+                                    @php
+                                        $adaTeks = $jawaban->jawaban_dipilih && trim($jawaban->jawaban_dipilih) !== '';
+                                        $adaGambar = !empty($jawaban->jawaban_file);
+                                    @endphp
+                                    @if($adaTeks || $adaGambar)
+                                        @if($adaTeks)
+                                            <div class="p-3 rounded border bg-white" style="min-height: 80px; font-size: 15px;">
+                                                {!! nl2br(e($jawaban->jawaban_dipilih)) !!}
+                                            </div>
+                                        @endif
+                                        @if($adaGambar)
+                                            <div class="{{ $adaTeks ? 'mt-2' : '' }} text-center">
+                                                <a href="{{ asset('storage/' . $jawaban->jawaban_file) }}" target="_blank" rel="noopener">
+                                                    <img src="{{ asset('storage/' . $jawaban->jawaban_file) }}" alt="Gambar Jawaban" style="max-width: 100%; max-height: 350px; border-radius: 8px; border: 1px solid #dee2e6;">
+                                                </a>
+                                                <div class="form-text">Klik gambar untuk memperbesar</div>
+                                            </div>
+                                        @endif
+                                    @else
+                                        <div class="p-3 rounded border bg-light text-muted" style="min-height: 80px; font-size: 15px;">
+                                            <em>Tidak ada jawaban</em>
+                                        </div>
+                                    @endif
                                 @else
                                     @php
                                         // Cari opsi yang dipilih

@@ -57,6 +57,12 @@ class ImportBankSoalController extends Controller
             'I' => 'Opsi D',
             'J' => 'Opsi E',
             'K' => 'Jawaban Benar',
+            'L' => 'Gambar Soal',
+            'M' => 'Gambar Opsi A',
+            'N' => 'Gambar Opsi B',
+            'O' => 'Gambar Opsi C',
+            'P' => 'Gambar Opsi D',
+            'Q' => 'Gambar Opsi E',
         ];
 
         foreach ($headers as $col => $header) {
@@ -113,6 +119,12 @@ class ImportBankSoalController extends Controller
         $sheet->getColumnDimension('I')->setWidth(20);
         $sheet->getColumnDimension('J')->setWidth(20);
         $sheet->getColumnDimension('K')->setWidth(16);
+        $sheet->getColumnDimension('L')->setWidth(20);
+        $sheet->getColumnDimension('M')->setWidth(20);
+        $sheet->getColumnDimension('N')->setWidth(20);
+        $sheet->getColumnDimension('O')->setWidth(20);
+        $sheet->getColumnDimension('P')->setWidth(20);
+        $sheet->getColumnDimension('Q')->setWidth(20);
 
         // Freeze header
         $sheet->freezePane('A2');
@@ -126,6 +138,7 @@ class ImportBankSoalController extends Controller
             'B' => 'Kode Mapel',
             'C' => 'Bobot Nilai',
             'D' => 'Pertanyaan',
+            'E' => 'Gambar Soal',
         ];
 
         foreach ($essayHeaders as $col => $header) {
@@ -163,6 +176,7 @@ class ImportBankSoalController extends Controller
         $essaySheet->getColumnDimension('B')->setWidth(14);
         $essaySheet->getColumnDimension('C')->setWidth(12);
         $essaySheet->getColumnDimension('D')->setWidth(55);
+        $essaySheet->getColumnDimension('E')->setWidth(20);
         $essaySheet->freezePane('A2');
 
         // ===== SHEET 3: Panduan =====
@@ -181,24 +195,36 @@ class ImportBankSoalController extends Controller
             ['Kode Mapel', 'Kode mata pelajaran yang terdaftar di sistem (wajib, lihat daftar di bawah)'],
             ['Tipe Soal', 'Isi dengan: pg (wajib, otomatis untuk sheet ini)'],
             ['Bobot Nilai', 'Bobot penilaian soal, angka (wajib, default: 1)'],
-            ['Pertanyaan', 'Teks pertanyaan soal (wajib)'],
-            ['Opsi A - E', 'Isi opsi jawaban. Minimal 2 opsi harus diisi (A dan B). Opsi E boleh kosong'],
+            ['Pertanyaan', 'Teks pertanyaan soal. Wajib diisi KECUALI kolom Gambar Soal sudah diisi (soal boleh berupa gambar saja)'],
+            ['Opsi A - E', 'Isi opsi jawaban. Minimal opsi A dan B harus punya isi (teks ATAU gambar). Opsi E boleh kosong'],
             ['Jawaban Benar', 'Huruf opsi jawaban yang benar: A, B, C, D, atau E (wajib)'],
+            ['Gambar Soal', 'NAMA FILE gambar soal utama, mis. "soal1.jpg" — lihat cara pakai di bawah'],
+            ['Gambar Opsi A - E', 'NAMA FILE gambar untuk tiap opsi, mis. "opsiA_1.jpg" — lihat cara pakai di bawah'],
             ['', ''],
             ['SHEET "Soal Essay"', ''],
             ['Kolom', 'Keterangan'],
             ['No', 'Nomor urut (opsional)'],
             ['Kode Mapel', 'Kode mata pelajaran (wajib)'],
             ['Bobot Nilai', 'Bobot penilaian (wajib)'],
-            ['Pertanyaan', 'Teks pertanyaan (wajib)'],
+            ['Pertanyaan', 'Teks pertanyaan. Wajib diisi KECUALI kolom Gambar Soal sudah diisi'],
+            ['Gambar Soal', 'NAMA FILE gambar soal utama — lihat cara pakai di bawah'],
             ['', ''],
-            ['CATATAN PENTING:', ''],
+            ['CARA PAKAI KOLOM GAMBAR (PENTING, BACA DULU):', ''],
+            ['1.', 'Kolom "Gambar Soal" dan "Gambar Opsi A-E" HANYA diisi NAMA FILE (teks biasa), contoh: soal1.jpg'],
+            ['2.', 'JANGAN copy-paste atau drag gambar langsung ke dalam sel Excel — sistem tidak membaca gambar yang ditempel di sel, hanya membaca teks nama file'],
+            ['3.', 'Sebelum isi kolom ini, upload dulu file gambarnya (jpg/jpeg/png, maks 1MB) satu per satu di menu "Pustaka Gambar Soal" (link ada di halaman Import Bank Soal)'],
+            ['4.', 'Nama file yang diketik di Excel HARUS SAMA PERSIS dengan nama file yang diupload (huruf besar/kecil diabaikan, tapi ejaan harus sama), contoh: kalau upload "Soal_1.JPG" maka tulis "Soal_1.JPG" atau "soal_1.jpg" di Excel'],
+            ['5.', 'Kalau soal/opsi hanya berupa gambar tanpa teks, kolom Pertanyaan/Opsi boleh dikosongkan — asal kolom Gambar-nya diisi'],
+            ['6.', 'Kalau soal/opsi punya teks DAN gambar sekaligus, isi keduanya — teks akan tampil di atas/bawah gambar saat siswa mengerjakan'],
+            ['', ''],
+            ['CATATAN LAIN:', ''],
             ['1.', 'Soal akan otomatis dikaitkan ke guru yang sedang login'],
             ['2.', 'Kode Mapel harus sesuai dengan yang ada di sistem (lihat daftar di bawah)'],
-            ['3.', 'File harus berformat .xlsx atau .xls (maks 5MB)'],
+            ['3.', 'File Excel harus berformat .xlsx atau .xls (maks 5MB)'],
             ['4.', 'Baris kosong akan dilewati otomatis'],
             ['5.', 'Anda bisa mengisi di kedua sheet sekaligus (PG dan Essay)'],
             ['6.', 'Status soal akan otomatis diset "aktif"'],
+            ['7.', 'Baris dengan nama file gambar yang belum diupload/salah ketik akan ditandai gagal saat preview, tapi tidak menghentikan baris lain'],
         ];
 
         $row = 2;
@@ -207,7 +233,7 @@ class ImportBankSoalController extends Controller
             $guideSheet->setCellValue('B' . $row, $data[1]);
 
             // Style section headers
-            if (in_array($data[0], ['SHEET "Soal Pilihan Ganda"', 'SHEET "Soal Essay"', 'CATATAN PENTING:'])) {
+            if (in_array($data[0], ['SHEET "Soal Pilihan Ganda"', 'SHEET "Soal Essay"', 'CARA PAKAI KOLOM GAMBAR (PENTING, BACA DULU):', 'CATATAN LAIN:'])) {
                 $guideSheet->getStyle('A' . $row)->getFont()->setBold(true)->setSize(12)->setColor(new \PhpOffice\PhpSpreadsheet\Style\Color('6366F1'));
             }
             if ($data[0] === 'Kolom') {
@@ -292,6 +318,24 @@ class ImportBankSoalController extends Controller
             return strtolower(trim($m->kode_mapel));
         });
 
+        // Build gambar library lookup (nama file, case-insensitive)
+        $gambarByName = \App\Models\SoalGambarLibrary::all()->keyBy(function ($g) {
+            return strtolower(trim($g->original_filename));
+        });
+
+        $resolveGambar = function (string $fileName, array &$rowErrors, string $label) use ($gambarByName) {
+            $fileName = trim($fileName);
+            if ($fileName === '') {
+                return null;
+            }
+            $found = $gambarByName[strtolower($fileName)] ?? null;
+            if (!$found) {
+                $rowErrors[] = "{$label}: file '{$fileName}' belum diupload ke Pustaka Gambar Soal";
+                return null;
+            }
+            return $found->stored_path;
+        };
+
         $previewData = [];
         $validTipeSoal = ['pg', 'essay', 'pg_kompleks', 'menjodohkan'];
         $validJawaban = ['a', 'b', 'c', 'd', 'e'];
@@ -329,6 +373,7 @@ class ImportBankSoalController extends Controller
                     $kodeMapel = strtolower(trim($rowValues[1] ?? ''));
                     $bobot = intval($rowValues[2] ?? 1);
                     $pertanyaan = trim($rowValues[3] ?? '');
+                    $gambarSoalFile = trim($rowValues[4] ?? '');
                     $tipeSoal = 'essay';
 
                     // Validate
@@ -347,9 +392,13 @@ class ImportBankSoalController extends Controller
                         $rowErrors[] = 'Bobot Nilai harus minimal 1';
                     }
 
-                    if (empty($pertanyaan)) {
-                        $rowErrors[] = 'Pertanyaan kosong';
+                    // Pertanyaan boleh kosong kalau soal ini pertanyaannya berupa gambar
+                    // (kolom "Gambar Soal" diisi nama file, bukan teks pertanyaan).
+                    if (empty($pertanyaan) && empty($gambarSoalFile)) {
+                        $rowErrors[] = 'Pertanyaan kosong (isi teks pertanyaan atau kolom Gambar Soal)';
                     }
+
+                    $gambarSoalPath = $resolveGambar($gambarSoalFile, $rowErrors, 'Gambar Soal');
 
                     $previewData[] = [
                         'sheet' => $sheet->getTitle(),
@@ -359,6 +408,7 @@ class ImportBankSoalController extends Controller
                         'mapel' => $resolvedMapel,
                         'bobot_nilai' => $bobot,
                         'pertanyaan' => $pertanyaan,
+                        'gambar_soal_path' => $gambarSoalPath,
                         'opsi' => [],
                         'jawaban_benar' => '-',
                         'errors' => $rowErrors,
@@ -366,7 +416,7 @@ class ImportBankSoalController extends Controller
                     ];
                 }
                 else {
-                    // PG format: No | Kode Mapel | Tipe Soal | Bobot | Pertanyaan | A | B | C | D | E | Jawaban
+                    // PG format: No | Kode Mapel | Tipe Soal | Bobot | Pertanyaan | A | B | C | D | E | Jawaban | Gambar Soal | Gambar Opsi A-E
                     $kodeMapel = strtolower(trim($rowValues[1] ?? ''));
                     $tipeSoal = strtolower(trim($rowValues[2] ?? 'pg'));
                     $bobot = intval($rowValues[3] ?? 1);
@@ -377,6 +427,14 @@ class ImportBankSoalController extends Controller
                     $opsiD = trim($rowValues[8] ?? '');
                     $opsiE = trim($rowValues[9] ?? '');
                     $jawabanBenar = strtolower(trim($rowValues[10] ?? ''));
+                    $gambarSoalFile = trim($rowValues[11] ?? '');
+                    $gambarOpsiFiles = [
+                        'A' => trim($rowValues[12] ?? ''),
+                        'B' => trim($rowValues[13] ?? ''),
+                        'C' => trim($rowValues[14] ?? ''),
+                        'D' => trim($rowValues[15] ?? ''),
+                        'E' => trim($rowValues[16] ?? ''),
+                    ];
 
                     // Validate mapel
                     $resolvedMapel = null;
@@ -402,17 +460,19 @@ class ImportBankSoalController extends Controller
                         $rowErrors[] = 'Bobot Nilai harus minimal 1';
                     }
 
-                    if (empty($pertanyaan)) {
-                        $rowErrors[] = 'Pertanyaan kosong';
+                    // Pertanyaan boleh kosong kalau soal ini pertanyaannya berupa gambar
+                    // (kolom "Gambar Soal" diisi nama file, bukan teks pertanyaan).
+                    if (empty($pertanyaan) && empty($gambarSoalFile)) {
+                        $rowErrors[] = 'Pertanyaan kosong (isi teks pertanyaan atau kolom Gambar Soal)';
                     }
 
-                    // Validate opsi (minimal A dan B)
+                    // Validate opsi (minimal A dan B) — boleh berupa teks atau gambar (atau keduanya)
                     if (in_array($tipeSoal, ['pg', 'pg_kompleks'])) {
-                        if (empty($opsiA)) {
-                            $rowErrors[] = 'Opsi A kosong';
+                        if (empty($opsiA) && empty($gambarOpsiFiles['A'])) {
+                            $rowErrors[] = 'Opsi A kosong (isi teks atau kolom Gambar Opsi A)';
                         }
-                        if (empty($opsiB)) {
-                            $rowErrors[] = 'Opsi B kosong';
+                        if (empty($opsiB) && empty($gambarOpsiFiles['B'])) {
+                            $rowErrors[] = 'Opsi B kosong (isi teks atau kolom Gambar Opsi B)';
                         }
 
                         // Validate jawaban benar
@@ -423,21 +483,26 @@ class ImportBankSoalController extends Controller
                             $rowErrors[] = "Jawaban Benar '{$rowValues[10]}' tidak valid (gunakan: A/B/C/D/E)";
                         }
                         else {
-                            // Check the referenced opsi is not empty
+                            // Check the referenced opsi punya konten — teks ATAU gambar
                             $opsiMap = ['a' => $opsiA, 'b' => $opsiB, 'c' => $opsiC, 'd' => $opsiD, 'e' => $opsiE];
-                            if (empty($opsiMap[$jawabanBenar])) {
+                            $opsiFileMap = ['a' => $gambarOpsiFiles['A'], 'b' => $gambarOpsiFiles['B'], 'c' => $gambarOpsiFiles['C'], 'd' => $gambarOpsiFiles['D'], 'e' => $gambarOpsiFiles['E']];
+                            if (empty($opsiMap[$jawabanBenar]) && empty($opsiFileMap[$jawabanBenar])) {
                                 $rowErrors[] = "Jawaban Benar merujuk ke Opsi " . strtoupper($jawabanBenar) . " yang kosong";
                             }
                         }
                     }
 
-                    // Build opsi array
+                    $gambarSoalPath = $resolveGambar($gambarSoalFile, $rowErrors, 'Gambar Soal');
+
+                    // Build opsi array — opsi disertakan kalau ADA isinya, baik teks maupun gambar
+                    // (opsi bergambar-saja tanpa teks tetap harus masuk, bukan dilewati diam-diam).
                     $opsi = [];
                     foreach (['A' => $opsiA, 'B' => $opsiB, 'C' => $opsiC, 'D' => $opsiD, 'E' => $opsiE] as $label => $isi) {
-                        if (!empty($isi)) {
+                        if (!empty($isi) || !empty($gambarOpsiFiles[$label])) {
                             $opsi[] = [
                                 'label' => $label,
                                 'isi' => $isi,
+                                'gambar_path' => $resolveGambar($gambarOpsiFiles[$label], $rowErrors, "Gambar Opsi {$label}"),
                                 'is_correct' => strtolower($label) === $jawabanBenar,
                             ];
                         }
@@ -451,6 +516,7 @@ class ImportBankSoalController extends Controller
                         'mapel' => $resolvedMapel,
                         'bobot_nilai' => $bobot,
                         'pertanyaan' => $pertanyaan,
+                        'gambar_soal_path' => $gambarSoalPath,
                         'opsi' => $opsi,
                         'jawaban_benar' => strtoupper($jawabanBenar),
                         'errors' => $rowErrors,
@@ -511,7 +577,7 @@ class ImportBankSoalController extends Controller
 
         // Large imports are processed in the background so the request doesn't
         // tie up a PHP-FPM worker / risk a timeout while hundreds of rows are inserted.
-        if ($validRows->count() > 150) {
+        if ($validRows->count() > 100) {
             $batch = ImportBatch::create([
                 'created_by' => auth()->id(),
                 'status' => 'processing',
@@ -526,57 +592,63 @@ class ImportBankSoalController extends Controller
 
         $successCount = 0;
         $importedSoals = [];
+        $failedRows = [];
 
-        DB::beginTransaction();
-        try {
-            foreach ($validRows as $row) {
-                $bankSoal = BankSoal::create([
-                    'mapel_id' => $row['mapel']->id,
-                    'guru_id' => $guru->id,
-                    'tipe_soal' => $row['tipe_soal'],
-                    'bobot_nilai' => $row['bobot_nilai'],
-                    'pertanyaan' => $row['pertanyaan'],
-                    'status' => 'aktif',
-                ]);
+        // Setiap baris diproses dalam transaksi sendiri: kalau satu baris gagal
+        // (mis. relasi mapel hilang di tengah proses), baris-baris lain yang
+        // sudah berhasil TIDAK ikut di-rollback — hanya baris itu yang dicatat gagal.
+        foreach ($validRows as $row) {
+            try {
+                DB::transaction(function () use ($row, $guru, &$importedSoals) {
+                    $bankSoal = BankSoal::create([
+                        'mapel_id' => $row['mapel']->id,
+                        'guru_id' => $guru->id,
+                        'tipe_soal' => $row['tipe_soal'],
+                        'bobot_nilai' => $row['bobot_nilai'],
+                        'pertanyaan' => $row['pertanyaan'],
+                        'gambar_soal' => $row['gambar_soal_path'] ?? null,
+                        'status' => 'aktif',
+                    ]);
 
-                // Save opsi jawaban for PG
-                if (in_array($row['tipe_soal'], ['pg', 'pg_kompleks']) && !empty($row['opsi'])) {
-                    foreach ($row['opsi'] as $opsi) {
-                        OpsiJawaban::create([
-                            'bank_soal_id' => $bankSoal->id,
-                            'opsi_label' => $opsi['label'],
-                            'isi_opsi' => $opsi['isi'],
-                            'is_correct' => $opsi['is_correct'],
-                        ]);
+                    // Save opsi jawaban for PG
+                    if (in_array($row['tipe_soal'], ['pg', 'pg_kompleks']) && !empty($row['opsi'])) {
+                        foreach ($row['opsi'] as $opsi) {
+                            OpsiJawaban::create([
+                                'bank_soal_id' => $bankSoal->id,
+                                'opsi_label' => $opsi['label'],
+                                'isi_opsi' => $opsi['isi'],
+                                'gambar_opsi' => $opsi['gambar_path'] ?? null,
+                                'is_correct' => $opsi['is_correct'],
+                            ]);
+                        }
                     }
-                }
 
-                $importedSoals[] = [
-                    'id' => $bankSoal->id,
-                    'pertanyaan' => \Str::limit($row['pertanyaan'], 60),
-                    'tipe_soal' => $row['tipe_soal'],
-                    'mapel' => $row['mapel']->nama_mapel,
-                ];
+                    $importedSoals[] = [
+                        'id' => $bankSoal->id,
+                        'pertanyaan' => \Str::limit($row['pertanyaan'], 60),
+                        'tipe_soal' => $row['tipe_soal'],
+                        'mapel' => $row['mapel']->nama_mapel,
+                    ];
+                });
 
                 $successCount++;
+            } catch (\Throwable $e) {
+                $failedRows[] = [
+                    'row' => $row['row'] ?? null,
+                    'pertanyaan' => \Str::limit($row['pertanyaan'], 60),
+                    'error' => $e->getMessage(),
+                ];
             }
-
-            DB::commit();
-
-            ActivityLog::log('import', 'bank_soal', "Import {$successCount} soal dari file Excel");
-
-            session(['import_banksoal_result' => $importedSoals]);
-            session(['import_banksoal_success_count' => $successCount]);
-            session()->forget(['import_banksoal_preview', 'import_banksoal_file_name']);
-
-            return redirect()->route('admin.import-banksoal.result');
-
         }
-        catch (\Exception $e) {
-            DB::rollback();
-            return redirect()->route('admin.import-banksoal.index')
-                ->with('error', 'Gagal import data: ' . $e->getMessage());
-        }
+
+        ActivityLog::log('import', 'bank_soal', "Import {$successCount} soal dari file Excel" . (!empty($failedRows) ? ", " . count($failedRows) . ' baris gagal' : ''));
+
+        session(['import_banksoal_result' => $importedSoals]);
+        session(['import_banksoal_success_count' => $successCount]);
+        session(['import_banksoal_failed_rows' => $failedRows]);
+        session()->forget(['import_banksoal_preview', 'import_banksoal_file_name']);
+
+        return redirect()->route('admin.import-banksoal.result');
     }
 
     /**
@@ -599,6 +671,7 @@ class ImportBankSoalController extends Controller
                     'batch' => $batch,
                     'importedSoals' => [],
                     'successCount' => 0,
+                    'failedRows' => [],
                 ]);
             }
 
@@ -612,11 +685,13 @@ class ImportBankSoalController extends Controller
                 'batch' => $batch,
                 'importedSoals' => $batch->imported_soals,
                 'successCount' => $batch->success_count,
+                'failedRows' => $batch->failed_rows ?? [],
             ]);
         }
 
         $importedSoals = session('import_banksoal_result');
         $successCount = session('import_banksoal_success_count', 0);
+        $failedRows = session('import_banksoal_failed_rows', []);
 
         if (!$importedSoals) {
             return redirect()->route('admin.import-banksoal.index');
@@ -627,6 +702,7 @@ class ImportBankSoalController extends Controller
             'batch' => null,
             'importedSoals' => $importedSoals,
             'successCount' => $successCount,
+            'failedRows' => $failedRows,
         ]);
     }
 }

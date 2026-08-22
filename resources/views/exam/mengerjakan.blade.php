@@ -86,11 +86,118 @@
             80% { transform: translateX(10px); }
         }
 
+        /* Essay answer image upload */
+        .essay-image-answer {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed var(--border-color);
+        }
+        .essay-image-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        .essay-image-upload-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 18px;
+            border: 1.5px dashed var(--border-color);
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+            transition: var(--transition);
+        }
+        .essay-image-upload-btn:hover {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.05);
+        }
+        .essay-image-preview {
+            display: inline-block;
+            max-width: 100%;
+        }
+        .essay-image-preview img {
+            display: block;
+            max-width: 100%;
+            max-height: 280px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            object-fit: contain;
+        }
+        .essay-image-remove {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 7px 14px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(220, 38, 38, 0.08);
+            color: #dc2626;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .essay-image-remove:hover {
+            background: rgba(220, 38, 38, 0.14);
+        }
+        .essay-image-status {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .essay-image-status.uploading { color: var(--text-secondary); }
+        .essay-image-status.success { color: #16a34a; }
+        .essay-image-status.error { color: #dc2626; }
+
+        /* Exam shell: flex column sized to the real viewport, so the body
+           never relies on a hardcoded header-height subtraction (which broke
+           on mobile once the header shrank via media queries below). */
+        .exam-shell {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+        .exam-shell .exam-header {
+            flex-shrink: 0;
+            padding-top: calc(16px + env(safe-area-inset-top));
+        }
+        .exam-shell .exam-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+        }
+
         /* Mobile sidebar toggle */
         .mobile-sidebar-toggle {
             display: none;
         }
+        /* Bottom-sheet backdrop, shown only while the mobile soal navigator is expanded */
+        .mobile-sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .mobile-sidebar-backdrop.show {
+            display: block;
+            opacity: 1;
+        }
         @media (max-width: 767.98px) {
+            .exam-shell .exam-header {
+                padding-top: calc(10px + env(safe-area-inset-top)) !important;
+            }
             .exam-header {
                 padding: 10px 14px !important;
             }
@@ -155,16 +262,26 @@
                 padding: 9px 14px !important;
                 font-size: 12px !important;
             }
+            .essay-image-upload-btn {
+                width: 100%;
+                justify-content: center;
+                padding: 12px !important;
+            }
+            .essay-image-preview img {
+                max-height: 200px;
+            }
             .exam-sidebar {
                 padding: 10px 12px calc(10px + env(safe-area-inset-bottom)) !important;
                 border-radius: 16px 16px 0 0 !important;
+                z-index: 101 !important;
             }
             .mobile-sidebar-toggle {
                 position: relative;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 14px 0 0;
+                gap: 8px;
+                padding: 16px 0 6px;
                 cursor: pointer;
                 background: none;
                 border: none;
@@ -173,7 +290,7 @@
             }
             .mobile-sheet-handle {
                 position: absolute;
-                top: 0;
+                top: 6px;
                 left: 50%;
                 transform: translateX(-50%);
                 width: 36px;
@@ -181,12 +298,19 @@
                 border-radius: 2px;
                 background: var(--border-color);
             }
+            /* Minimized by default (max-height: 0); expands smoothly instead of
+               snapping with display:none/block, and scrolls internally so a long
+               soal list can't push past the viewport. */
             .sidebar-content-mobile {
-                display: none;
-                padding-top: 10px;
+                max-height: 0;
+                overflow: hidden;
+                padding-top: 0;
+                transition: max-height 0.28s ease;
             }
             .sidebar-content-mobile.show {
-                display: block;
+                max-height: min(50vh, 360px);
+                overflow-y: auto;
+                padding-top: 10px;
             }
             .soal-nav-item {
                 font-size: 11px !important;
@@ -217,6 +341,9 @@
             }
             .soal-nav-grid {
                 grid-template-columns: repeat(6, 1fr) !important;
+            }
+            .mobile-sidebar-toggle .btn-label {
+                display: none;
             }
         }
 
@@ -388,6 +515,8 @@
         <p style="font-size: 12px; opacity: 0.6; margin-top: 16px;">Mengalihkan otomatis...</p>
     </div>
 
+    <!-- Exam Shell (flex column: header + scrollable body, sized to real viewport) -->
+    <div class="exam-shell">
     <!-- Exam Header -->
     <div class="exam-header">
         <div class="d-flex align-items-center gap-2 gap-md-3">
@@ -416,7 +545,7 @@
     </div>
 
     <!-- Exam Body -->
-    <div class="exam-body" style="height: calc(100vh - 70px); height: calc(100dvh - 70px); overflow-y: auto;">
+    <div class="exam-body">
         <!-- Questions Area -->
         <div class="exam-questions" id="questionsArea" style="overflow-y: auto; padding-bottom: 40px;">
             <!-- Progress Bar -->
@@ -460,7 +589,12 @@
                          onclick="selectOption({{ $index }}, {{ $soal->id }}, '{{ $opsi->opsi_label }}', this)"
                          id="option-{{ $index }}-{{ $opsi->opsi_label }}">
                         <div class="option-label">{{ $opsi->opsi_label }}</div>
-                        <div class="flex-grow-1">{{ $opsi->isi_opsi }}</div>
+                        <div class="flex-grow-1">
+                            @if($opsi->gambar_opsi)
+                                <img src="{{ asset('storage/' . $opsi->gambar_opsi) }}" alt="Opsi {{ $opsi->opsi_label }}" style="max-width: 100%; border-radius: 10px; margin-bottom: 8px; display: block;">
+                            @endif
+                            {{ $opsi->isi_opsi }}
+                        </div>
                         <div class="option-check"><i class="bi bi-check-lg"></i></div>
                     </div>
                     @endforeach
@@ -469,6 +603,26 @@
                               placeholder="Tulis jawaban Anda di sini..."
                               oninput="saveEssay({{ $index }}, {{ $soal->id }}, this.value)"
                               >{{ $jawabans[$soal->id] ?? '' }}</textarea>
+
+                    <div class="essay-image-answer" data-soal-id="{{ $soal->id }}">
+                        <div class="essay-image-label">
+                            <i class="bi bi-camera-fill"></i> Atau upload foto jawaban (opsional)
+                        </div>
+
+                        <div class="essay-image-preview {{ isset($jawabanFiles[$soal->id]) ? '' : 'd-none' }}" id="essayImagePreviewWrap-{{ $index }}">
+                            <img src="{{ isset($jawabanFiles[$soal->id]) ? asset('storage/' . $jawabanFiles[$soal->id]) : '' }}" id="essayImagePreview-{{ $index }}" alt="Gambar jawaban">
+                            <button type="button" class="essay-image-remove" onclick="removeEssayImage({{ $index }}, {{ $soal->id }})">
+                                <i class="bi bi-trash3-fill"></i> Hapus Gambar
+                            </button>
+                        </div>
+
+                        <label class="essay-image-upload-btn {{ isset($jawabanFiles[$soal->id]) ? 'd-none' : '' }}" id="essayImageUploadBtn-{{ $index }}">
+                            <i class="bi bi-cloud-arrow-up-fill"></i> Pilih / Ambil Foto
+                            <input type="file" accept="image/*" capture="environment" class="d-none" onchange="uploadEssayImage({{ $index }}, {{ $soal->id }}, this)">
+                        </label>
+
+                        <div class="essay-image-status" id="essayImageStatus-{{ $index }}"></div>
+                    </div>
                 @endif
 
                 <!-- Navigation -->
@@ -490,11 +644,14 @@
             @endforeach
         </div>
 
+        <!-- Mobile bottom-sheet backdrop (dims screen when soal navigator is expanded) -->
+        <div class="mobile-sidebar-backdrop d-md-none" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
+
         <!-- Sidebar Navigation -->
         <div class="exam-sidebar">
             <div style="position: sticky; top: 0;">
-                <!-- Mobile Toggle Button -->
-                <button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()">
+                <!-- Mobile Toggle Button (tap to minimize/expand the soal navigator) -->
+                <button class="mobile-sidebar-toggle" onclick="toggleMobileSidebar()" aria-expanded="false" aria-controls="sidebarContent">
                     <div class="mobile-sheet-handle d-md-none"></div>
                     <div class="d-flex align-items-center gap-2">
                         <span style="font-weight: 700; font-size: 13px;" id="mobileProgress">0/{{ $soals->count() }} dijawab</span>
@@ -503,13 +660,13 @@
                         </span>
                     </div>
                     <div class="d-flex align-items-center gap-2">
-                        <button class="btn btn-ios btn-ios-light btn-ios-sm" onclick="event.stopPropagation(); openReviewModal();" style="padding: 6px 12px !important;">
-                            <i class="bi bi-grid-3x3-gap-fill"></i> Lihat Semua
+                        <button class="btn btn-ios btn-ios-light btn-ios-sm" onclick="event.stopPropagation(); openReviewModal();" style="padding: 6px 12px !important;" title="Lihat Semua Soal">
+                            <i class="bi bi-grid-3x3-gap-fill"></i> <span class="btn-label">Lihat Semua</span>
                         </button>
-                        <button class="btn btn-ios btn-ios-success btn-ios-sm" onclick="event.stopPropagation(); confirmSubmit();" style="padding: 6px 12px !important;">
-                            <i class="bi bi-send-fill"></i> Kumpulkan
+                        <button class="btn btn-ios btn-ios-success btn-ios-sm" onclick="event.stopPropagation(); confirmSubmit();" style="padding: 6px 12px !important;" title="Kumpulkan Jawaban">
+                            <i class="bi bi-send-fill"></i> <span class="btn-label">Kumpulkan</span>
                         </button>
-                        <i class="bi bi-chevron-down" id="sidebarToggleIcon" style="transition: transform 0.3s;"></i>
+                        <i class="bi bi-chevron-down" id="sidebarToggleIcon" style="transition: transform 0.3s; flex-shrink: 0;"></i>
                     </div>
                 </button>
 
@@ -576,6 +733,8 @@
             </div>
         </div>
     </div>
+    </div>
+    <!-- /.exam-shell -->
 
     <!-- Review All Questions Modal -->
     <div class="review-modal-overlay" id="reviewModalOverlay" onclick="if(event.target===this) closeReviewModal();">
@@ -639,7 +798,14 @@
         const totalSoal = {{ $soals->count() }};
         let sisaWaktu = {{ $sisaWaktu }};
         let answers = @json($jawabans);
+        let answerFiles = @json($jawabanFiles);
         let raguMap = @json(array_flip($raguRagu));
+
+        // A soal counts as answered whether it has typed text or an uploaded image
+        function hasAnswer(soalId) {
+            const v = answers[soalId];
+            return (v !== undefined && v !== null && v !== '') || !!answerFiles[soalId];
+        }
         @php
             $soalListForJs = $soals->values()->map(function ($soal, $index) {
                 return [
@@ -745,12 +911,9 @@
 
             document.getElementById('questionsArea').scrollTop = 0;
 
-            // Auto collapse mobile sidebar after selecting
+            // Auto-minimize mobile bottom sheet after selecting a question
             if (window.innerWidth <= 768) {
-                const content = document.getElementById('sidebarContent');
-                const icon = document.getElementById('sidebarToggleIcon');
-                content.classList.remove('show');
-                icon.style.transform = 'rotate(0deg)';
+                closeMobileSidebar();
             }
         }
 
@@ -787,6 +950,91 @@
                 updateNavState(index, soalId);
                 updateProgress();
             }, 1000);
+        }
+
+        // Upload an image as the answer to an essay question
+        function uploadEssayImage(index, soalId, input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+
+            const statusEl = document.getElementById('essayImageStatus-' + index);
+            statusEl.className = 'essay-image-status uploading';
+            statusEl.textContent = 'Mengunggah gambar...';
+
+            const formData = new FormData();
+            formData.append('bank_soal_id', soalId);
+            formData.append('jawaban_file', file);
+
+            const url = `/exam/${ujianId}/save-jawaban-file`;
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                },
+                body: formData,
+            })
+            .then(async response => {
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+                return data;
+            })
+            .then(data => {
+                console.log(`[UPLOAD] ✓ Gambar jawaban soal ${soalId} tersimpan`);
+                statusEl.className = 'essay-image-status success';
+                statusEl.textContent = 'Gambar tersimpan.';
+
+                document.getElementById('essayImagePreview-' + index).src = data.data.url;
+                document.getElementById('essayImagePreviewWrap-' + index).classList.remove('d-none');
+                document.getElementById('essayImageUploadBtn-' + index).classList.add('d-none');
+
+                answerFiles[soalId] = data.data.jawaban_file;
+                updateNavState(index, soalId);
+                updateProgress();
+            })
+            .catch(err => {
+                console.error('[UPLOAD] ✗ Error:', err);
+                statusEl.className = 'essay-image-status error';
+                statusEl.textContent = 'Gagal mengunggah gambar. Coba lagi.';
+                showAlert(`Gagal mengunggah gambar jawaban soal nomor ${index + 1}.\n\n${err.message}`);
+            })
+            .finally(() => {
+                input.value = '';
+            });
+        }
+
+        // Remove the uploaded answer image (e.g. student wants to retake the photo)
+        function removeEssayImage(index, soalId) {
+            if (!showConfirm('Hapus gambar jawaban ini?')) return;
+
+            const url = `/exam/${ujianId}/save-jawaban-file`;
+
+            fetch(url, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ bank_soal_id: soalId }),
+            })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            })
+            .then(() => {
+                delete answerFiles[soalId];
+                document.getElementById('essayImagePreviewWrap-' + index).classList.add('d-none');
+                document.getElementById('essayImageUploadBtn-' + index).classList.remove('d-none');
+                document.getElementById('essayImageStatus-' + index).textContent = '';
+                updateNavState(index, soalId);
+                updateProgress();
+            })
+            .catch(err => {
+                console.error('[REMOVE IMAGE] ✗ Error:', err);
+                showAlert('Gagal menghapus gambar. Silakan coba lagi.');
+            });
         }
 
         // Toggle Ragu
@@ -888,7 +1136,7 @@
             nav.classList.remove('answered', 'doubt');
             if (raguMap[soalId]) {
                 nav.classList.add('doubt');
-            } else if (answers[soalId]) {
+            } else if (hasAnswer(soalId)) {
                 nav.classList.add('answered');
             }
 
@@ -898,7 +1146,7 @@
                 navDesktop.classList.remove('answered', 'doubt');
                 if (raguMap[soalId]) {
                     navDesktop.classList.add('doubt');
-                } else if (answers[soalId]) {
+                } else if (hasAnswer(soalId)) {
                     navDesktop.classList.add('answered');
                 }
             }
@@ -906,7 +1154,7 @@
 
         // Update progress
         function updateProgress() {
-            const answered = Object.values(answers).filter(v => v !== null && v !== '').length;
+            const answered = soalList.filter(s => hasAnswer(s.id)).length;
             const countEl = document.getElementById('answeredCount');
             if (countEl) countEl.textContent = answered;
             const percent = Math.round((answered / totalSoal) * 100);
@@ -941,7 +1189,7 @@
 
         function getSoalStatus(soalId) {
             if (raguMap[soalId]) return 'doubt';
-            if (answers[soalId]) return 'answered';
+            if (hasAnswer(soalId)) return 'answered';
             return 'unanswered';
         }
 
@@ -1023,7 +1271,7 @@
 
         // Confirm Submit
         async function confirmSubmit() {
-            const answered = Object.values(answers).filter(v => v !== null && v !== '').length;
+            const answered = soalList.filter(s => hasAnswer(s.id)).length;
             const unanswered = totalSoal - answered;
             const doubtCount = Object.keys(raguMap).length;
 
@@ -1111,12 +1359,26 @@
             }
         }
 
-        // Toggle mobile sidebar
+        // Toggle mobile sidebar (bottom sheet minimize/expand)
         function toggleMobileSidebar() {
             const content = document.getElementById('sidebarContent');
+            const isOpen = !content.classList.contains('show');
+            setMobileSidebarOpen(isOpen);
+        }
+
+        function closeMobileSidebar() {
+            setMobileSidebarOpen(false);
+        }
+
+        function setMobileSidebarOpen(open) {
+            const content = document.getElementById('sidebarContent');
             const icon = document.getElementById('sidebarToggleIcon');
-            content.classList.toggle('show');
-            icon.style.transform = content.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const toggleBtn = document.querySelector('.mobile-sidebar-toggle');
+            content.classList.toggle('show', open);
+            icon.style.transform = open ? 'rotate(180deg)' : 'rotate(0deg)';
+            if (backdrop) backdrop.classList.toggle('show', open);
+            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
 
         // =============================================

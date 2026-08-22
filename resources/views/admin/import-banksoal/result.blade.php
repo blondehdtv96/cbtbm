@@ -70,6 +70,36 @@
         </div>
     </div>
 
+    {{-- Failed Rows --}}
+    @if(!empty($failedRows))
+    <div class="card-ios mt-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-exclamation-triangle-fill me-2"></i>Baris Gagal Diimport</span>
+            <span class="badge-ios danger">{{ count($failedRows) }} baris</span>
+        </div>
+        <div class="card-body p-0" style="overflow-x: auto;">
+            <table class="table-ios">
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">Baris</th>
+                        <th>Pertanyaan</th>
+                        <th>Alasan Gagal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($failedRows as $fail)
+                    <tr>
+                        <td>{{ $fail['row'] ?? '-' }}</td>
+                        <td style="font-weight: 500;">{{ $fail['pertanyaan'] ?? '-' }}</td>
+                        <td style="color: #dc2626; font-size: 12px;">{{ $fail['error'] ?? '-' }}</td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
     {{-- Action Buttons --}}
     <div class="d-flex gap-2 mt-3 flex-wrap">
         <a href="{{ route('banksoal.index') }}" class="btn btn-ios btn-ios-primary">
