@@ -22,14 +22,22 @@ class SoalGambarLibraryController extends Controller
             $query->where('original_filename', 'like', '%' . $request->search . '%');
         }
 
-        $gambars = $query->paginate(24);
+        $totalGambar = SoalGambarLibrary::count();
+        $gambars = $query->paginate(60);
 
-        return view('admin.soal-gambar.index', compact('gambars'));
+        return view('admin.soal-gambar.index', compact('gambars', 'totalGambar'));
     }
 
     /**
      * Upload satu atau beberapa gambar ke pustaka. Nama file asli dijaga unik
      * karena itulah yang dicocokkan dengan kolom Excel saat import.
+     *
+     * Sengaja TIDAK membatasi jumlah file per request di level validasi — batas
+     * nyata datang dari PHP sendiri (`max_file_uploads`, default 20 file per
+     * request). Untuk upload dalam jumlah besar, frontend (lihat index.blade.php)
+     * mengirim file dalam beberapa batch kecil secara berurutan supaya batas itu
+     * tidak pernah tersentuh, dan endpoint ini merespon JSON supaya bisa dipanggil
+     * berulang lewat fetch tanpa reload halaman.
      */
     public function store(Request $request)
     {
@@ -66,7 +74,13 @@ class SoalGambarLibraryController extends Controller
             $uploaded++;
         }
 
-        ActivityLog::log('create', 'soal_gambar_library', "Upload {$uploaded} gambar ke pustaka gambar soal");
+        if ($uploaded > 0) {
+            ActivityLog::log('create', 'soal_gambar_library', "Upload {$uploaded} gambar ke pustaka gambar soal");
+        }
+
+        if ($request->wantsJson()) {
+            return response()->json(['uploaded' => $uploaded, 'skipped' => $skipped]);
+        }
 
         if (!empty($skipped)) {
             return back()->with(
