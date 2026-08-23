@@ -61,7 +61,10 @@ class UjianController extends Controller
             'durasi_menit' => 'required|integer|min:1',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
-            'jumlah_soal' => 'required|integer|min:1',
+            'metode_soal' => 'required|in:random,manual',
+            'jumlah_soal' => 'required_if:metode_soal,random|nullable|integer|min:1',
+            'soal_ids' => 'required_if:metode_soal,manual|array',
+            'soal_ids.*' => 'exists:bank_soals,id',
             'kelas_ids' => 'required|array|min:1',
             'kelas_ids.*' => 'exists:kelas,id',
         ]);
@@ -75,6 +78,12 @@ class UjianController extends Controller
             $guruId = $request->guru_id;
         }
 
+        // Untuk mode manual, jumlah_soal selalu mengikuti jumlah soal yang benar-benar
+        // dipilih — bukan angka yang diketik terpisah (mencegah keduanya tidak sinkron).
+        $jumlahSoal = $request->metode_soal === 'manual'
+            ? count($request->input('soal_ids', []))
+            : $request->jumlah_soal;
+
         $ujian = Ujian::create([
             'nama_ujian' => $request->nama_ujian,
             'jenis_ujian' => $request->jenis_ujian,
@@ -84,9 +93,9 @@ class UjianController extends Controller
             'durasi_menit' => $request->durasi_menit,
             'tanggal_mulai' => $request->tanggal_mulai,
             'tanggal_selesai' => $request->tanggal_selesai,
-            'metode_soal' => $request->metode_soal ?? 'random',
+            'metode_soal' => $request->metode_soal,
             'acak_opsi' => $request->boolean('acak_opsi'),
-            'jumlah_soal' => $request->jumlah_soal,
+            'jumlah_soal' => $jumlahSoal,
             'status' => 'draft',
             'token' => substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 5),
             'tampilkan_nilai' => $request->boolean('tampilkan_nilai'),
@@ -97,17 +106,14 @@ class UjianController extends Controller
         // Attach selected kelas
         $ujian->kelasList()->attach($request->kelas_ids);
 
-        // Auto-assign soal if random
-        if ($ujian->metode_soal === 'random') {
-            $soals = BankSoal::where('mapel_id', $ujian->mapel_id)
-                ->where('status', 'aktif')
-                ->inRandomOrder()
-                ->take($ujian->jumlah_soal)
-                ->get();
-
-            foreach ($soals as $i => $soal) {
-                $ujian->bankSoals()->attach($soal->id, ['nomor_urut' => $i + 1]);
+        // Attach soal — manual: sesuai urutan pemilihan admin; random: auto-pick.
+        if ($ujian->metode_soal === 'manual') {
+            foreach ($request->input('soal_ids', []) as $i => $soalId) {
+                $ujian->bankSoals()->attach($soalId, ['nomor_urut' => $i + 1]);
             }
+        }
+        else {
+            $this->attachRandomSoal($ujian);
         }
 
         // Auto-assign peserta from selected kelas
@@ -136,8 +142,10 @@ class UjianController extends Controller
         $mapels = $this->getMapelsForUser();
         $kelasList = Kelas::with('jurusan')->where('is_active', true)->get();
         $sesiList = SesiUjian::where('is_active', true)->orderBy('jam_mulai')->get();
-        $ujian->load('kelasList');
-        return view('ujian.edit', compact('ujian', 'mapels', 'kelasList', 'sesiList'));
+        $guruList = \App\Models\Guru::orderBy('nama')->get();
+        $ujian->load(['kelasList', 'bankSoals']);
+        $adaPesertaMulai = $ujian->pesertaUjians()->where('status', '!=', 'belum')->exists();
+        return view('ujian.edit', compact('ujian', 'mapels', 'kelasList', 'sesiList', 'guruList', 'adaPesertaMulai'));
     }
 
     public function update(Request $request, Ujian $ujian)
@@ -149,13 +157,17 @@ class UjianController extends Controller
             'durasi_menit' => 'required|integer|min:1',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
-            'jumlah_soal' => 'required|integer|min:1',
+            'metode_soal' => 'required|in:random,manual',
+            'jumlah_soal' => 'nullable|integer|min:1',
+            'soal_ids' => 'required_if:metode_soal,manual|array',
+            'soal_ids.*' => 'exists:bank_soals,id',
+            'kelas_ids' => 'required|array|min:1',
+            'kelas_ids.*' => 'exists:kelas,id',
         ]);
 
         $ujian->update($request->only([
             'nama_ujian', 'jenis_ujian', 'mapel_id', 'sesi_ujian_id',
-            'durasi_menit', 'tanggal_mulai', 'tanggal_selesai',
-            'metode_soal', 'jumlah_soal', 'instruksi', 'status',
+            'durasi_menit', 'tanggal_mulai', 'tanggal_selesai', 'instruksi', 'status',
         ]));
 
         $ujian->update([
@@ -164,13 +176,102 @@ class UjianController extends Controller
             'tampilkan_pembahasan' => $request->boolean('tampilkan_pembahasan'),
         ]);
 
-        if ($request->filled('kelas_ids')) {
-            $ujian->kelasList()->sync($request->kelas_ids);
+        if (auth()->user()->guru) {
+            $ujian->update(['guru_id' => auth()->user()->guru->id]);
+        }
+        elseif ($request->filled('guru_id')) {
+            $ujian->update(['guru_id' => $request->guru_id]);
+        }
+
+        $ujian->kelasList()->sync($request->kelas_ids);
+
+        // Soal set (dan metode-nya) hanya boleh diubah selama BELUM ada peserta yang
+        // mulai mengerjakan — mengubahnya setelah itu akan merusak soal_order per-siswa
+        // dan JawabanSiswa yang sudah terlanjur dibuat untuk soal lama.
+        $adaPesertaMulai = $ujian->pesertaUjians()->where('status', '!=', 'belum')->exists();
+
+        if (!$adaPesertaMulai) {
+            $metodeBaru = $request->metode_soal;
+
+            if ($metodeBaru === 'manual') {
+                $ujian->bankSoals()->detach();
+                foreach ($request->input('soal_ids', []) as $i => $soalId) {
+                    $ujian->bankSoals()->attach($soalId, ['nomor_urut' => $i + 1]);
+                }
+                $ujian->update([
+                    'metode_soal' => 'manual',
+                    'jumlah_soal' => count($request->input('soal_ids', [])),
+                ]);
+            }
+            else {
+                $metodeBerubahDariManual = $ujian->metode_soal !== 'random';
+
+                if ($request->boolean('acak_ulang') || $metodeBerubahDariManual) {
+                    $ujian->update([
+                        'metode_soal' => 'random',
+                        'jumlah_soal' => $request->jumlah_soal ?? $ujian->jumlah_soal,
+                    ]);
+                    $ujian->bankSoals()->detach();
+                    $this->attachRandomSoal($ujian);
+                }
+                else {
+                    $ujian->update(['metode_soal' => 'random']);
+                }
+            }
+        }
+        else {
+            ActivityLog::log('update', 'ujian', "Percobaan ubah soal ujian \"{$ujian->nama_ujian}\" diabaikan — sudah ada peserta yang mengerjakan");
         }
 
         ActivityLog::log('update', 'ujian', "Mengupdate ujian: {$ujian->nama_ujian}");
 
         return redirect()->route('ujian.index')->with('success', 'Ujian berhasil diupdate!');
+    }
+
+    /**
+     * Auto-pick `jumlah_soal` soal aktif secara acak dari mapel ujian ini dan
+     * attach ke pivot ujian_bank_soals. Dipakai oleh store() dan update() supaya
+     * logic random tidak terduplikasi.
+     */
+    private function attachRandomSoal(Ujian $ujian): void
+    {
+        $soals = BankSoal::where('mapel_id', $ujian->mapel_id)
+            ->where('status', 'aktif')
+            ->inRandomOrder()
+            ->take($ujian->jumlah_soal)
+            ->get();
+
+        foreach ($soals as $i => $soal) {
+            $ujian->bankSoals()->attach($soal->id, ['nomor_urut' => $i + 1]);
+        }
+    }
+
+    /**
+     * AJAX: daftar soal aktif untuk satu mapel, dipakai oleh picker soal manual
+     * di form buat/edit ujian.
+     */
+    public function soalPicker(Request $request)
+    {
+        $request->validate([
+            'mapel_id' => 'required|exists:mapels,id',
+            'search' => 'nullable|string|max:255',
+        ]);
+
+        $query = BankSoal::where('mapel_id', $request->mapel_id)->where('status', 'aktif');
+
+        if ($request->filled('search')) {
+            $query->where('pertanyaan', 'like', '%' . $request->search . '%');
+        }
+
+        $soals = $query->orderBy('id')->get(['id', 'pertanyaan', 'tipe_soal', 'bobot_nilai'])
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'pertanyaan' => Str::limit(strip_tags($s->pertanyaan), 100),
+                'tipe_soal' => $s->tipe_soal,
+                'bobot_nilai' => $s->bobot_nilai,
+            ]);
+
+        return response()->json($soals);
     }
 
     public function destroy(Ujian $ujian)

@@ -21,7 +21,7 @@
                                 </select>
                             </div>
                             <div class="col-md-3"><label class="form-label-ios">Mata Pelajaran *</label>
-                                <select name="mapel_id" class="form-select-ios w-100" required>
+                                <select name="mapel_id" id="mapelSelect" class="form-select-ios w-100" required>
                                     <option value="">Pilih</option>@foreach($mapels as $m)<option value="{{ $m->id }}">{{ $m->nama_mapel }}</option>@endforeach
                                 </select>
                             </div>
@@ -39,7 +39,7 @@
                                 </select>
                             </div>
                             <div class="col-md-3"><label class="form-label-ios">Durasi (menit) *</label><input type="number" name="durasi_menit" class="form-control-ios w-100" value="{{ old('durasi_menit', 60) }}" min="1" required></div>
-                            <div class="col-md-3"><label class="form-label-ios">Jumlah Soal *</label><input type="number" name="jumlah_soal" class="form-control-ios w-100" value="{{ old('jumlah_soal', 10) }}" min="1" required></div>
+                            <div class="col-md-3" id="jumlahSoalWrap"><label class="form-label-ios">Jumlah Soal *</label><input type="number" id="jumlahSoalInput" name="jumlah_soal" class="form-control-ios w-100" value="{{ old('jumlah_soal', 10) }}" min="1"></div>
                             @if(!auth()->user()->isGuru())
                             <div class="col-md-4"><label class="form-label-ios">Guru Pengampu</label>
                                 <select name="guru_id" class="form-select-ios w-100">
@@ -56,7 +56,7 @@
 
                         <div class="row g-3 mb-4">
                             <div class="col-md-4"><label class="form-label-ios">Metode Soal</label>
-                                <select name="metode_soal" class="form-select-ios w-100"><option value="random">Random</option><option value="manual">Manual</option></select>
+                                <select name="metode_soal" id="metodeSoalSelect" class="form-select-ios w-100"><option value="random">Random</option><option value="manual">Manual</option></select>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label-ios d-block mb-2">Pengaturan</label>
@@ -66,19 +66,9 @@
                             </div>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="form-label-ios mb-2">Kelas Peserta * <small class="text-muted">(pilih satu atau lebih)</small></label>
-                            <div class="row g-2">
-                                @foreach($kelasList as $kelas)
-                                <div class="col-md-4 col-lg-3">
-                                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-glass-dark); border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500;">
-                                        <input type="checkbox" name="kelas_ids[]" value="{{ $kelas->id }}">
-                                        {{ $kelas->nama_kelas }}
-                                    </label>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
+                        @include('ujian.partials.soal-picker')
+
+                        @include('ujian.partials.kelas-picker', ['selectedKelas' => []])
 
                         <div class="mb-4"><label class="form-label-ios">Instruksi Ujian</label><textarea name="instruksi" class="form-control-ios w-100" rows="3" placeholder="Petunjuk pengerjaan ujian...">{{ old('instruksi') }}</textarea></div>
 

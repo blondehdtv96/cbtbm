@@ -21,7 +21,7 @@
                                 </select>
                             </div>
                             <div class="col-md-3"><label class="form-label-ios">Mapel</label>
-                                <select name="mapel_id" class="form-select-ios w-100" required>
+                                <select name="mapel_id" id="mapelSelect" class="form-select-ios w-100" required>
                                     @foreach($mapels as $m)<option value="{{ $m->id }}" {{ $ujian->mapel_id == $m->id ? 'selected' : '' }}>{{ $m->nama_mapel }}</option>@endforeach
                                 </select>
                             </div>
@@ -38,8 +38,46 @@
                                 </select>
                             </div>
                             <div class="col-md-3"><label class="form-label-ios">Durasi</label><input type="number" name="durasi_menit" class="form-control-ios w-100" value="{{ $ujian->durasi_menit }}" required></div>
-                            <div class="col-md-3"><label class="form-label-ios">Jumlah Soal</label><input type="number" name="jumlah_soal" class="form-control-ios w-100" value="{{ $ujian->jumlah_soal }}" required></div>
+                            <div class="col-md-3" id="jumlahSoalWrap"><label class="form-label-ios">Jumlah Soal</label><input type="number" id="jumlahSoalInput" name="jumlah_soal" class="form-control-ios w-100" value="{{ $ujian->jumlah_soal }}"></div>
+                            @if(!auth()->user()->isGuru())
+                            <div class="col-md-3"><label class="form-label-ios">Guru Pengampu</label>
+                                <select name="guru_id" class="form-select-ios w-100">
+                                    <option value="">-- Pilih Guru --</option>
+                                    @foreach($guruList as $g)
+                                    <option value="{{ $g->id }}" {{ $ujian->guru_id == $g->id ? 'selected' : '' }}>{{ $g->nama }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            @endif
                         </div>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4"><label class="form-label-ios">Metode Soal</label>
+                                <select name="metode_soal" id="metodeSoalSelect" class="form-select-ios w-100" {{ $adaPesertaMulai ? 'disabled' : '' }}>
+                                    <option value="random" {{ $ujian->metode_soal == 'random' ? 'selected' : '' }}>Random</option>
+                                    <option value="manual" {{ $ujian->metode_soal == 'manual' ? 'selected' : '' }}>Manual</option>
+                                </select>
+                                @if($adaPesertaMulai)
+                                    <input type="hidden" name="metode_soal" value="{{ $ujian->metode_soal }}">
+                                    <small class="text-muted">Terkunci — sudah ada peserta mengerjakan.</small>
+                                @endif
+                            </div>
+                            @if($ujian->metode_soal === 'random' && !$adaPesertaMulai)
+                            <div class="col-md-4">
+                                <label class="form-label-ios d-block mb-2">&nbsp;</label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;">
+                                    <input type="checkbox" name="acak_ulang" value="1"> Acak ulang soal (ganti soal yang sudah terpasang dengan pilihan acak baru)
+                                </label>
+                            </div>
+                            @endif
+                            <div class="col-md-4">
+                                <label class="form-label-ios d-block mb-2">Pengaturan</label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; margin-bottom: 8px;"><input type="checkbox" name="acak_opsi" value="1" {{ $ujian->acak_opsi ? 'checked' : '' }}> Acak opsi jawaban</label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; margin-bottom: 8px;"><input type="checkbox" name="tampilkan_nilai" value="1" {{ $ujian->tampilkan_nilai ? 'checked' : '' }}> Tampilkan nilai</label>
+                                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px;"><input type="checkbox" name="tampilkan_pembahasan" value="1" {{ $ujian->tampilkan_pembahasan ? 'checked' : '' }}> Tampilkan pembahasan</label>
+                            </div>
+                        </div>
+
+                        @include('ujian.partials.soal-picker')
                         <div class="row g-3 mb-4">
                             <div class="col-md-3"><label class="form-label-ios">Mulai</label><input type="datetime-local" name="tanggal_mulai" class="form-control-ios w-100" value="{{ $ujian->tanggal_mulai->format('Y-m-d\TH:i') }}" required></div>
                             <div class="col-md-3"><label class="form-label-ios">Selesai</label><input type="datetime-local" name="tanggal_selesai" class="form-control-ios w-100" value="{{ $ujian->tanggal_selesai->format('Y-m-d\TH:i') }}" required></div>
@@ -53,20 +91,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="mb-4">
-                            <label class="form-label-ios mb-2">Kelas Peserta</label>
-                            <div class="row g-2">
-                                @php $selectedKelas = $ujian->kelasList->pluck('id')->toArray(); @endphp
-                                @foreach($kelasList as $kelas)
-                                <div class="col-md-4 col-lg-3">
-                                    <label style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--bg-glass-dark); border-radius: 10px; cursor: pointer; font-size: 13px;">
-                                        <input type="checkbox" name="kelas_ids[]" value="{{ $kelas->id }}" {{ in_array($kelas->id, $selectedKelas) ? 'checked' : '' }}>
-                                        {{ $kelas->nama_kelas }}
-                                    </label>
-                                </div>
-                                @endforeach
-                            </div>
-                        </div>
+                        @include('ujian.partials.kelas-picker', ['selectedKelas' => $ujian->kelasList->pluck('id')->toArray()])
                         <div class="mb-4"><label class="form-label-ios">Instruksi</label><textarea name="instruksi" class="form-control-ios w-100" rows="3">{{ $ujian->instruksi }}</textarea></div>
                         <div class="d-flex gap-2">
                             <button type="submit" class="btn btn-ios btn-ios-primary"><i class="bi bi-check-lg"></i> Update</button>

@@ -151,6 +151,7 @@ Route::middleware(['auth', 'role:superadmin,admin,guru'])->group(function () {
 
 // Ujian Routes (Admin only)
 Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
+    Route::get('/ujian/soal-picker', [UjianController::class, 'soalPicker'])->name('ujian.soal-picker');
     Route::resource('ujian', UjianController::class);
     Route::patch('/ujian/{ujian}/publish', [UjianController::class , 'publish'])->name('ujian.publish');
     Route::get('/ujian/{ujian}/hasil', [UjianController::class , 'hasil'])->name('ujian.hasil');
