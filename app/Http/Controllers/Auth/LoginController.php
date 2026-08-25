@@ -35,7 +35,7 @@ class LoginController extends Controller
 
         if (!$siswa) {
             return back()->withErrors([
-                'nisn' => 'NISN tidak ditemukan dalam sistem.',
+                'nisn' => 'Username tidak ditemukan dalam sistem.',
             ])->withInput($request->only('nisn'));
         }
 
@@ -43,7 +43,7 @@ class LoginController extends Controller
 
         if (!$user) {
             return back()->withErrors([
-                'nisn' => 'Akun untuk NISN ini tidak ditemukan.',
+                'nisn' => 'Akun untuk Username ini tidak ditemukan.',
             ])->withInput($request->only('nisn'));
         }
 
@@ -70,7 +70,7 @@ class LoginController extends Controller
                 'last_login' => now(),
             ]);
 
-            ActivityLog::log('login', 'auth', 'Siswa login via NISN');
+            ActivityLog::log('login', 'auth', 'Siswa login via Username');
 
             return $this->redirectByRole($user);
         }
@@ -78,7 +78,7 @@ class LoginController extends Controller
         $this->handleFailedLogin($user);
 
         return back()->withErrors([
-            'nisn' => 'NISN atau password salah.',
+            'nisn' => 'Username atau password salah.',
         ])->withInput($request->only('nisn'));
     }
 

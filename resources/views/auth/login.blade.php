@@ -503,7 +503,7 @@
                 <div class="form-header">
                     <span class="form-badge"><i class="bi bi-person-fill"></i> Portal Siswa</span>
                     <h2>Selamat Datang</h2>
-                    <p>Masuk dengan NISN untuk mengikuti ujian</p>
+                    <p>Masuk dengan Username untuk mengikuti ujian</p>
                 </div>
 
                 @if($errors->any())
@@ -523,10 +523,10 @@
                 <form method="POST" action="{{ route('login.process') }}">
                     @csrf
                     <div class="form-group">
-                        <label class="form-label" for="nisn">NISN</label>
+                        <label class="form-label" for="nisn">Username</label>
                         <input type="text" class="form-input" id="nisn" name="nisn"
                                value="{{ old('nisn') }}"
-                               placeholder="Masukkan NISN Anda" inputmode="numeric"
+                               placeholder="Masukkan Username Anda" inputmode="numeric"
                                pattern="[0-9]*" maxlength="20" autocomplete="username" autofocus>
                     </div>
                     <div class="form-group">
