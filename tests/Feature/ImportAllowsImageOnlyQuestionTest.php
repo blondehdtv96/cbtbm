@@ -60,6 +60,7 @@ class ImportAllowsImageOnlyQuestionTest extends TestCase
 
         foreach (['soal-gambar-only.jpg', 'opsi-a.jpg', 'opsi-b.jpg'] as $fileName) {
             SoalGambarLibrary::create([
+                'mapel_id' => $mapel->id,
                 'original_filename' => $fileName,
                 'stored_path' => 'soal-gambar/library/' . $fileName,
                 'size' => 1000,

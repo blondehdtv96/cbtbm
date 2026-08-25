@@ -212,7 +212,7 @@ class ImportBankSoalController extends Controller
             ['CARA PAKAI KOLOM GAMBAR (PENTING, BACA DULU):', ''],
             ['1.', 'Kolom "Gambar Soal" dan "Gambar Opsi A-E" HANYA diisi NAMA FILE (teks biasa), contoh: soal1.jpg'],
             ['2.', 'JANGAN copy-paste atau drag gambar langsung ke dalam sel Excel — sistem tidak membaca gambar yang ditempel di sel, hanya membaca teks nama file'],
-            ['3.', 'Sebelum isi kolom ini, upload dulu file gambarnya (jpg/jpeg/png, maks 1MB) satu per satu di menu "Pustaka Gambar Soal" (link ada di halaman Import Bank Soal)'],
+            ['3.', 'Sebelum isi kolom ini, upload dulu file gambarnya (jpg/jpeg/png, maks 1MB) di menu "Pustaka Gambar Soal" (link ada di halaman Import Bank Soal) — PILIH DULU mata pelajaran yang sesuai dengan "Kode Mapel" baris tersebut, karena pustaka gambar dipisah per mata pelajaran'],
             ['4.', 'Nama file yang diketik di Excel HARUS SAMA PERSIS dengan nama file yang diupload (huruf besar/kecil diabaikan, tapi ejaan harus sama), contoh: kalau upload "Soal_1.JPG" maka tulis "Soal_1.JPG" atau "soal_1.jpg" di Excel'],
             ['5.', 'Kalau soal/opsi hanya berupa gambar tanpa teks, kolom Pertanyaan/Opsi boleh dikosongkan — asal kolom Gambar-nya diisi'],
             ['6.', 'Kalau soal/opsi punya teks DAN gambar sekaligus, isi keduanya — teks akan tampil di atas/bawah gambar saat siswa mengerjakan'],
@@ -318,19 +318,28 @@ class ImportBankSoalController extends Controller
             return strtolower(trim($m->kode_mapel));
         });
 
-        // Build gambar library lookup (nama file, case-insensitive)
-        $gambarByName = \App\Models\SoalGambarLibrary::all()->keyBy(function ($g) {
-            return strtolower(trim($g->original_filename));
-        });
+        // Build gambar library lookup, dipisah per mapel (nama file, case-insensitive)
+        // supaya file dengan nama sama di mapel berbeda tidak saling tertukar.
+        $gambarByMapelAndName = \App\Models\SoalGambarLibrary::all()
+            ->groupBy('mapel_id')
+            ->map(function ($group) {
+                return $group->keyBy(function ($g) {
+                    return strtolower(trim($g->original_filename));
+                });
+            });
 
-        $resolveGambar = function (string $fileName, array &$rowErrors, string $label) use ($gambarByName) {
+        $resolveGambar = function (string $fileName, array &$rowErrors, string $label, ?Mapel $mapel) use ($gambarByMapelAndName) {
             $fileName = trim($fileName);
             if ($fileName === '') {
                 return null;
             }
-            $found = $gambarByName[strtolower($fileName)] ?? null;
+            if (!$mapel) {
+                $rowErrors[] = "{$label}: file '{$fileName}' tidak bisa dicek karena Kode Mapel tidak valid";
+                return null;
+            }
+            $found = $gambarByMapelAndName->get($mapel->id, collect())[strtolower($fileName)] ?? null;
             if (!$found) {
-                $rowErrors[] = "{$label}: file '{$fileName}' belum diupload ke Pustaka Gambar Soal";
+                $rowErrors[] = "{$label}: file '{$fileName}' belum diupload ke Pustaka Gambar Soal untuk mapel {$mapel->nama_mapel}";
                 return null;
             }
             return $found->stored_path;
@@ -398,7 +407,7 @@ class ImportBankSoalController extends Controller
                         $rowErrors[] = 'Pertanyaan kosong (isi teks pertanyaan atau kolom Gambar Soal)';
                     }
 
-                    $gambarSoalPath = $resolveGambar($gambarSoalFile, $rowErrors, 'Gambar Soal');
+                    $gambarSoalPath = $resolveGambar($gambarSoalFile, $rowErrors, 'Gambar Soal', $resolvedMapel);
 
                     $previewData[] = [
                         'sheet' => $sheet->getTitle(),
@@ -492,7 +501,7 @@ class ImportBankSoalController extends Controller
                         }
                     }
 
-                    $gambarSoalPath = $resolveGambar($gambarSoalFile, $rowErrors, 'Gambar Soal');
+                    $gambarSoalPath = $resolveGambar($gambarSoalFile, $rowErrors, 'Gambar Soal', $resolvedMapel);
 
                     // Build opsi array — opsi disertakan kalau ADA isinya, baik teks maupun gambar
                     // (opsi bergambar-saja tanpa teks tetap harus masuk, bukan dilewati diam-diam).
@@ -502,7 +511,7 @@ class ImportBankSoalController extends Controller
                             $opsi[] = [
                                 'label' => $label,
                                 'isi' => $isi,
-                                'gambar_path' => $resolveGambar($gambarOpsiFiles[$label], $rowErrors, "Gambar Opsi {$label}"),
+                                'gambar_path' => $resolveGambar($gambarOpsiFiles[$label], $rowErrors, "Gambar Opsi {$label}", $resolvedMapel),
                                 'is_correct' => strtolower($label) === $jawabanBenar,
                             ];
                         }

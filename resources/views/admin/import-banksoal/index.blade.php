@@ -37,7 +37,7 @@
                                     <li>Kolom wajib Essay: <strong>Kode Mapel</strong>, <strong>Pertanyaan</strong></li>
                                     <li>Soal akan dikaitkan ke <strong>guru yang sedang login</strong></li>
                                     <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong> (maks. 5MB)</li>
-                                    <li>Ingin melampirkan gambar? Upload dulu file-nya ke <strong>Pustaka Gambar Soal</strong>, baru ketik <strong>nama filenya</strong> (mis. <code>soal1.jpg</code>) di kolom Gambar Soal / Gambar Opsi A-E — <strong>jangan tempel/paste gambar langsung ke sel Excel</strong>, itu tidak akan terbaca</li>
+                                    <li>Ingin melampirkan gambar? Upload dulu file-nya ke <strong>Pustaka Gambar Soal</strong> — pustaka ini dipisah per mata pelajaran, jadi <strong>pilih dulu mata pelajaran yang sesuai</strong> sebelum upload — baru ketik <strong>nama filenya</strong> (mis. <code>soal1.jpg</code>) di kolom Gambar Soal / Gambar Opsi A-E — <strong>jangan tempel/paste gambar langsung ke sel Excel</strong>, itu tidak akan terbaca</li>
                                     <li>Kalau soal/opsi hanya berupa gambar tanpa teks, kolom Pertanyaan/Opsi boleh dikosongkan asal kolom Gambar-nya diisi</li>
                                 </ul>
                             </div>

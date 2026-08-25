@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\BankSoal;
+use App\Models\Mapel;
 use App\Models\OpsiJawaban;
 use App\Models\SoalGambarLibrary;
 use Illuminate\Http\Request;
@@ -12,20 +13,29 @@ use Illuminate\Support\Facades\Storage;
 class SoalGambarLibraryController extends Controller
 {
     /**
-     * List gambar yang sudah diupload, untuk dicek guru sebelum mengisi Excel import.
+     * List gambar yang sudah diupload, dipisah per mata pelajaran supaya guru
+     * tidak perlu menyisir gambar mapel lain saat mengisi Excel import.
      */
     public function index(Request $request)
     {
-        $query = SoalGambarLibrary::with('uploader')->latest();
+        $mapels = Mapel::where('is_active', true)->orderBy('nama_mapel')->get();
+
+        $selectedMapelId = $request->filled('mapel_id')
+            ? (int) $request->integer('mapel_id')
+            : optional($mapels->first())->id;
+
+        $query = SoalGambarLibrary::with('uploader')
+            ->where('mapel_id', $selectedMapelId)
+            ->latest();
 
         if ($request->filled('search')) {
             $query->where('original_filename', 'like', '%' . $request->search . '%');
         }
 
-        $totalGambar = SoalGambarLibrary::count();
-        $gambars = $query->paginate(60);
+        $totalGambar = SoalGambarLibrary::where('mapel_id', $selectedMapelId)->count();
+        $gambars = $query->paginate(60)->withQueryString();
 
-        return view('admin.soal-gambar.index', compact('gambars', 'totalGambar'));
+        return view('admin.soal-gambar.index', compact('gambars', 'totalGambar', 'mapels', 'selectedMapelId'));
     }
 
     /**
@@ -42,21 +52,25 @@ class SoalGambarLibraryController extends Controller
     public function store(Request $request)
     {
         $request->validate([
+            'mapel_id' => 'required|exists:mapels,id',
             'gambar' => 'required|array|min:1',
             'gambar.*' => 'image|mimes:jpg,jpeg,png|max:1024',
         ], [
+            'mapel_id.required' => 'Pilih mata pelajaran dulu sebelum upload.',
+            'mapel_id.exists' => 'Mata pelajaran tidak valid.',
             'gambar.*.image' => 'File harus berupa gambar.',
             'gambar.*.mimes' => 'Format gambar harus jpg, jpeg, atau png.',
             'gambar.*.max' => 'Ukuran gambar maksimal 1MB.',
         ]);
 
+        $mapelId = $request->integer('mapel_id');
         $uploaded = 0;
         $skipped = [];
 
         foreach ($request->file('gambar') as $file) {
             $originalName = $file->getClientOriginalName();
 
-            if (SoalGambarLibrary::where('original_filename', $originalName)->exists()) {
+            if (SoalGambarLibrary::where('mapel_id', $mapelId)->where('original_filename', $originalName)->exists()) {
                 $skipped[] = $originalName;
                 continue;
             }
@@ -64,6 +78,7 @@ class SoalGambarLibraryController extends Controller
             $storedPath = $file->store('soal-gambar/library', 'public');
 
             SoalGambarLibrary::create([
+                'mapel_id' => $mapelId,
                 'original_filename' => $originalName,
                 'stored_path' => $storedPath,
                 'size' => $file->getSize(),
