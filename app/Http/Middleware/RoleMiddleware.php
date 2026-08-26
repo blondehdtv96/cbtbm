@@ -21,12 +21,6 @@ class RoleMiddleware
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
-        if (auth()->user()->isLocked()) {
-            auth()->logout();
-            return redirect()->route($loginRoute)
-                ->withErrors(['email' => 'Akun Anda dikunci sementara. Coba lagi nanti.']);
-        }
-
         if (!auth()->user()->is_active) {
             auth()->logout();
             return redirect()->route($loginRoute)

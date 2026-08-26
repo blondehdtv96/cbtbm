@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
-use App\Models\Setting;
 use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -44,13 +43,6 @@ class LoginController extends Controller
         if (!$user) {
             return back()->withErrors([
                 'nisn' => 'Akun untuk Username ini tidak ditemukan.',
-            ])->withInput($request->only('nisn'));
-        }
-
-        if ($user->isLocked()) {
-            $minutes = $user->locked_until->diffInMinutes(now());
-            return back()->withErrors([
-                'nisn' => "Akun dikunci. Coba lagi dalam {$minutes} menit.",
             ])->withInput($request->only('nisn'));
         }
 
@@ -103,13 +95,6 @@ class LoginController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if ($user && $user->isLocked()) {
-            $minutes = $user->locked_until->diffInMinutes(now());
-            return back()->withErrors([
-                'email' => "Akun dikunci. Coba lagi dalam {$minutes} menit.",
-            ])->withInput($request->only('email'));
-        }
-
         if (Auth::attempt($request->only('email', 'password'), $request->filled('remember'))) {
             $request->session()->regenerate();
 
@@ -156,20 +141,11 @@ class LoginController extends Controller
     }
 
     /**
-     * Handle failed login attempt - increment counter and lock if needed
+     * Handle failed login attempt - increment counter (account is never locked)
      */
     protected function handleFailedLogin(User $user)
     {
-        $maxAttempts = (int) Setting::getValue('max_login_attempts', 3);
-        $lockDuration = (int) Setting::getValue('lock_duration_minutes', 30);
-
         $user->increment('login_attempts');
-
-        if ($user->login_attempts >= $maxAttempts) {
-            $user->update([
-                'locked_until' => now()->addMinutes($lockDuration),
-            ]);
-        }
     }
 
     public function logout(Request $request)
