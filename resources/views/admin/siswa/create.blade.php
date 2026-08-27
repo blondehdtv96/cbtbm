@@ -32,7 +32,7 @@
                             <div class="col-md-6">
                                 <label class="form-label-ios">NISN <span class="text-danger">*</span></label>
                                 <input type="text" name="nisn" class="form-control-ios w-100" value="{{ old('nisn') }}"
-                                       placeholder="Contoh: 0012345678" inputmode="numeric" maxlength="20" required>
+                                       placeholder="Contoh: 0012345678 atau STS121389" maxlength="20" required>
                                 <small class="text-muted" style="font-size: 11px; margin-top: 4px; display: block;">Nomor Induk Siswa Nasional (digunakan untuk login)</small>
                             </div>
 

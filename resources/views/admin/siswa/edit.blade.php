@@ -22,7 +22,7 @@
                             <div class="col-md-6">
                                 <label class="form-label-ios">NISN <small class="text-muted">(untuk login)</small> <span class="text-danger">*</span></label>
                                 <input type="text" name="nisn" class="form-control-ios w-100" value="{{ old('nisn', $siswa->nisn) }}"
-                                       inputmode="numeric" maxlength="20" required>
+                                       maxlength="20" required>
                             </div>
 
                             <div class="col-md-6">

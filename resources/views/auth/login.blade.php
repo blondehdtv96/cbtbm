@@ -526,8 +526,8 @@
                         <label class="form-label" for="nisn">Username</label>
                         <input type="text" class="form-input" id="nisn" name="nisn"
                                value="{{ old('nisn') }}"
-                               placeholder="Masukkan Username Anda" inputmode="numeric"
-                               pattern="[0-9]*" maxlength="20" autocomplete="username" autofocus>
+                               placeholder="Masukkan Username Anda"
+                               maxlength="20" autocomplete="username" autofocus>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="password">Password</label>
