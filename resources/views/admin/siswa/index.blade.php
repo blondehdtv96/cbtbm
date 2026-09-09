@@ -212,7 +212,7 @@
                                     </button>
                                 </form>
                                 @endif
-                                <form action="{{ route('admin.siswa.destroy', $siswa) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin hapus siswa {{ $siswa->nama }}? Akun login juga akan dihapus.')">
+                                <form action="{{ route('admin.siswa.destroy', $siswa) }}" method="POST" class="d-inline" data-confirm="Yakin hapus siswa {{ $siswa->nama }}? Akun login juga akan dihapus." data-confirm-title="Hapus Siswa" data-confirm-ok="Ya, Hapus">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-ios btn-ios-sm btn-ios-danger" title="Hapus">
                                         <i class="bi bi-trash"></i>
@@ -279,10 +279,15 @@ function clearSelection() {
     updateBulkBar();
 }
 
-function confirmBulkDelete() {
+async function confirmBulkDelete() {
     const ids = getSelectedSiswaIds();
     if (ids.length === 0) return;
-    if (!confirm(`Yakin hapus ${ids.length} siswa yang dipilih? Akun login juga akan terhapus dan tindakan ini tidak bisa dibatalkan.`)) return;
+
+    const approved = await showConfirm(
+        `Yakin hapus ${ids.length} siswa yang dipilih? Akun login juga akan terhapus dan tindakan ini tidak bisa dibatalkan.`,
+        { title: 'Hapus Siswa', type: 'danger', okText: 'Ya, Hapus' }
+    );
+    if (!approved) return;
 
     const container = document.getElementById('bulkIdsContainer');
     container.innerHTML = '';

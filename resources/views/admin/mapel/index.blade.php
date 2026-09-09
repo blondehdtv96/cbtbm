@@ -24,7 +24,7 @@
                         <td>
                             <div class="d-flex gap-1">
                                 <button class="btn btn-ios btn-ios-sm btn-ios-light" onclick="editMapel({{ json_encode($mapel) }})" data-bs-toggle="modal" data-bs-target="#editModal"><i class="bi bi-pencil"></i></button>
-                                <form action="{{ route('admin.mapel.destroy', $mapel) }}" method="POST" onsubmit="return confirm('Yakin?')">@csrf @method('DELETE')<button class="btn btn-ios btn-ios-sm btn-ios-danger"><i class="bi bi-trash"></i></button></form>
+                                <form action="{{ route('admin.mapel.destroy', $mapel) }}" method="POST" data-confirm="Yakin ingin menghapus mata pelajaran ini?" data-confirm-title="Hapus Mata Pelajaran" data-confirm-ok="Ya, Hapus">@csrf @method('DELETE')<button class="btn btn-ios btn-ios-sm btn-ios-danger"><i class="bi bi-trash"></i></button></form>
                             </div>
                         </td>
                     </tr>

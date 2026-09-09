@@ -736,19 +736,24 @@ class UjianController extends Controller
     private function getMapelsForUser()
     {
         $user = auth()->user();
+        $query = Mapel::query()
+            ->with('jurusan:id,nama_jurusan')
+            ->withCount([
+                'bankSoals as soal_aktif_count' => fn ($soalQuery) => $soalQuery->where('status', 'aktif'),
+            ])
+            ->where('is_active', true);
 
         // Guru: only show assigned mapels
         if ($user->isGuru() && $user->guru) {
             $assignedMapelIds = $user->guru->mapels()->pluck('mapels.id');
             if ($assignedMapelIds->isNotEmpty()) {
-                return Mapel::where('is_active', true)
-                    ->whereIn('id', $assignedMapelIds)
-                    ->orderBy('nama_mapel')
-                    ->get();
+                $query->whereIn('id', $assignedMapelIds);
             }
         }
 
-        // Admin/Superadmin or guru without assignment: show all
-        return Mapel::where('is_active', true)->orderBy('nama_mapel')->get();
+        return $query
+            ->orderByDesc('is_umum')
+            ->orderBy('nama_mapel')
+            ->get();
     }
 }

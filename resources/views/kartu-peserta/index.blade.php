@@ -6,12 +6,6 @@
 @section('content')
 <div class="fade-in">
 
-    @if(session('success'))
-    <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: #166534; padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px;">
-        <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
-    </div>
-    @endif
-
     {{-- Action Buttons --}}
     <div class="d-flex gap-2 mb-4 flex-wrap">
         <button class="btn btn-ios btn-ios-primary" onclick="openModal()">

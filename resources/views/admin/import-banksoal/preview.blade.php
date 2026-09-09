@@ -167,12 +167,12 @@
                             @if($errorCount > 0)
                                 <input type="hidden" name="skip_errors" value="1">
                                 <button type="submit" class="btn btn-ios btn-ios-warning"
-                                    onclick="return confirm('Import {{ $validCount }} soal valid dan lewati {{ $errorCount }} soal bermasalah?')">
+                                    data-confirm-click="Import {{ $validCount }} soal valid dan lewati {{ $errorCount }} soal bermasalah?">
                                     <i class="bi bi-cloud-arrow-up-fill"></i> Import {{ $validCount }} Soal Valid
                                 </button>
                             @else
                                 <button type="submit" class="btn btn-ios btn-ios-primary"
-                                    onclick="return confirm('Import {{ $validCount }} soal ke Bank Soal?')">
+                                    data-confirm-click="Import {{ $validCount }} soal ke Bank Soal?">
                                     <i class="bi bi-cloud-arrow-up-fill"></i> Import {{ $validCount }} Soal
                                 </button>
                             @endif

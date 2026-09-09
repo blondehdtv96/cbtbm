@@ -6,10 +6,6 @@
 
 @section('content')
 <div class="fade-in">
-    @if(session('warning'))
-        <div class="alert alert-warning">{{ session('warning') }}</div>
-    @endif
-
     {{-- Mata Pelajaran Selector --}}
     <div class="card-ios mb-4">
         <div class="card-body">
@@ -89,7 +85,7 @@
                                 <td>{{ number_format($gambar->size / 1024, 1) }} KB</td>
                                 <td style="font-size: 12px; color: var(--text-secondary);">{{ $gambar->created_at->diffForHumans() }}</td>
                                 <td>
-                                    <form method="POST" action="{{ route('admin.soal-gambar.destroy', $gambar) }}" onsubmit="return confirm('Hapus gambar ini dari pustaka?')">
+                                    <form method="POST" action="{{ route('admin.soal-gambar.destroy', $gambar) }}" data-confirm="Hapus gambar ini dari pustaka?" data-confirm-title="Hapus Gambar" data-confirm-ok="Ya, Hapus">
                                         @csrf @method('DELETE')
                                         <button type="submit" class="btn btn-ios btn-ios-sm btn-ios-danger"><i class="bi bi-trash3-fill"></i></button>
                                     </form>

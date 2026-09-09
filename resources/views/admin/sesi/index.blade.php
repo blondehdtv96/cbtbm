@@ -56,7 +56,7 @@
                         <td>
                             <div class="d-flex gap-1">
                                 <button class="btn btn-ios btn-ios-sm btn-ios-light" onclick="editSesi({{ json_encode($sesi) }})" data-bs-toggle="modal" data-bs-target="#editModal"><i class="bi bi-pencil"></i></button>
-                                <form action="{{ route('admin.sesi.destroy', $sesi) }}" method="POST" onsubmit="return confirm('Yakin hapus sesi ini?')">@csrf @method('DELETE')<button class="btn btn-ios btn-ios-sm btn-ios-danger"><i class="bi bi-trash"></i></button></form>
+                                <form action="{{ route('admin.sesi.destroy', $sesi) }}" method="POST" data-confirm="Yakin ingin menghapus sesi ini?" data-confirm-title="Hapus Sesi" data-confirm-ok="Ya, Hapus">@csrf @method('DELETE')<button class="btn btn-ios btn-ios-sm btn-ios-danger"><i class="bi bi-trash"></i></button></form>
                             </div>
                         </td>
                     </tr>

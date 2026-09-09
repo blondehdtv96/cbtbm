@@ -53,7 +53,7 @@
                                 @endif
                                 <a href="{{ route('ujian.hasil', $ujian) }}" class="btn btn-ios btn-ios-sm btn-ios-primary" title="Hasil"><i class="bi bi-graph-up"></i></a>
                                 <a href="{{ route('ujian.edit', $ujian) }}" class="btn btn-ios btn-ios-sm btn-ios-light" title="Edit"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('ujian.destroy', $ujian) }}" method="POST" onsubmit="return confirm('Yakin hapus?')">@csrf @method('DELETE')
+                                <form action="{{ route('ujian.destroy', $ujian) }}" method="POST" data-confirm="Yakin ingin menghapus ujian ini?" data-confirm-title="Hapus Ujian" data-confirm-ok="Ya, Hapus">@csrf @method('DELETE')
                                     <button class="btn btn-ios btn-ios-sm btn-ios-danger"><i class="bi bi-trash"></i></button>
                                 </form>
                             </div>

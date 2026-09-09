@@ -46,46 +46,6 @@
             font-family: 'Poppins', sans-serif;
         }
 
-        /* Anti-cheat blur overlay */
-        .cheat-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(220, 38, 38, 0.95);
-            z-index: 10000;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            color: white;
-            text-align: center;
-            padding: 40px;
-        }
-        .cheat-overlay.show {
-            display: flex;
-        }
-        .cheat-overlay .cheat-icon {
-            font-size: 80px;
-            margin-bottom: 24px;
-            animation: shakeIcon 0.5s ease-in-out;
-        }
-        .cheat-overlay h2 {
-            font-weight: 800;
-            font-size: 24px;
-            margin-bottom: 12px;
-        }
-        .cheat-overlay p {
-            font-size: 15px;
-            opacity: 0.9;
-            max-width: 400px;
-        }
-        @keyframes shakeIcon {
-            0%, 100% { transform: translateX(0); }
-            20% { transform: translateX(-10px); }
-            40% { transform: translateX(10px); }
-            60% { transform: translateX(-10px); }
-            80% { transform: translateX(10px); }
-        }
-
         /* Essay answer image upload */
         .essay-image-answer {
             margin-top: 14px;
@@ -498,22 +458,59 @@
             .review-modal-tabs { padding: 0 14px 10px; }
             .review-modal-grid { padding: 4px 14px 10px; }
         }
+
+        /* Text zoom controls — scales only the question content (via CSS
+           `zoom` on #questionsArea), so it never touches window/viewport
+           dimensions and can't be mistaken for the DevTools-size heuristic
+           or any other anti-cheat signal below. */
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-pill, 999px);
+            padding: 4px;
+        }
+        .zoom-controls button {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 50%;
+            background: transparent;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .zoom-controls button:hover:not(:disabled) {
+            background: var(--primary);
+            color: #fff;
+        }
+        .zoom-controls button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        .zoom-controls span {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-secondary);
+            min-width: 36px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+        @media (max-width: 768px) {
+            .zoom-controls button { width: 26px; height: 26px; font-size: 12px; }
+            .zoom-controls span { min-width: 30px; font-size: 11px; }
+        }
     </style>
 </head>
 <body class="exam-fullscreen">
     <!-- Watermark Overlay -->
     <div class="watermark-overlay" id="watermarkOverlay"></div>
-
-    <!-- Cheat Detection Overlay -->
-    <div class="cheat-overlay" id="cheatOverlay">
-        <div class="cheat-icon"><i class="bi bi-shield-x"></i></div>
-        <h2>⚠️ Kecurangan Terdeteksi!</h2>
-        <p>Anda terdeteksi meninggalkan halaman ujian. Ujian akan di-submit otomatis dan akun Anda akan di-logout.</p>
-        <button onclick="document.getElementById('antiCheatForm').submit();" style="display: inline-flex; align-items: center; gap: 8px; margin-top: 24px; padding: 14px 32px; background: white; color: #dc2626; font-weight: 700; font-size: 15px; border-radius: 14px; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2); transition: all 0.3s;">
-            <i class="bi bi-box-arrow-right"></i> Ke Halaman Login
-        </button>
-        <p style="font-size: 12px; opacity: 0.6; margin-top: 16px;">Mengalihkan otomatis...</p>
-    </div>
 
     <!-- Exam Shell (flex column: header + scrollable body, sized to real viewport) -->
     <div class="exam-shell">
@@ -535,6 +532,12 @@
                     {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
                 </div>
                 {{ auth()->user()->name }}
+            </div>
+
+            <div class="zoom-controls" id="zoomControls" title="Ukuran Teks Soal">
+                <button type="button" id="zoomOutBtn" onclick="adjustZoom(-1)" aria-label="Perkecil teks soal"><i class="bi bi-dash-lg"></i></button>
+                <span id="zoomLevelLabel">100%</span>
+                <button type="button" id="zoomInBtn" onclick="adjustZoom(1)" aria-label="Perbesar teks soal"><i class="bi bi-plus-lg"></i></button>
             </div>
 
             <div class="exam-timer" id="examTimer">
@@ -772,6 +775,8 @@
         </div>
     </div>
 
+    <x-app-popup :flash="false" />
+
     <!-- Submit Form -->
     <form id="submitForm" method="POST" action="{{ route('exam.submit', $ujian) }}" style="display: none;">
         @csrf
@@ -780,8 +785,8 @@
     <!-- Anti-Cheat Form (real form POST for reliable logout + logging) -->
     <form id="antiCheatForm" method="POST" action="{{ route('exam.anti-cheat', $ujian) }}" style="display: none;">
         @csrf
-        <input type="hidden" name="violation_type" value="tab_switch">
-        <input type="hidden" name="detail" value="Siswa berpindah tab atau membuka home screen">
+        <input type="hidden" id="violationTypeInput" name="violation_type" value="tab_switch">
+        <input type="hidden" id="violationDetailInput" name="detail" value="Siswa berpindah tab atau membuka aplikasi/browser lain">
     </form>
 
     <script>
@@ -823,24 +828,8 @@
         const antiCheatEnabled = @json($antiCheatEnabled);
         const maxTabSwitch = {{ max(1, $maxTabSwitch) }}; // from admin setting "Maksimal Pindah Tab"
 
-        // Native alert()/confirm() dialogs can themselves flip
-        // document.hidden on some mobile browsers (Android Chrome in
-        // particular). appDialogOpen tells the anti-cheat visibility
-        // handler "this hidden state is our own dialog, not a real
-        // tab/app switch" so it doesn't count as a violation.
-        let appDialogOpen = false;
-        function showAlert(message) {
-            appDialogOpen = true;
-            window.alert(message);
-            setTimeout(() => { appDialogOpen = false; }, 500);
-        }
-        function showConfirm(message) {
-            appDialogOpen = true;
-            const result = window.confirm(message);
-            setTimeout(() => { appDialogOpen = false; }, 500);
-            return result;
-        }
-
+        // Popup global juga menjadi guard anti-cheat agar dialog aplikasi
+        // tidak pernah dianggap sebagai perpindahan tab/browser.
         // Generate Watermark
         function generateWatermark() {
             const overlay = document.getElementById('watermarkOverlay');
@@ -860,6 +849,34 @@
             }
         }
         generateWatermark();
+
+        // Text zoom (question content only). Uses CSS `zoom` on
+        // #questionsArea instead of relying on the browser's native
+        // Ctrl+/Ctrl-/pinch zoom — native zoom shrinks window.innerWidth
+        // while window.outerWidth stays put, which can cross the DevTools-
+        // size threshold below and false-flag a student as a cheater just
+        // for zooming in. Scaling one inner container never touches
+        // window/viewport dimensions, document.hidden, or focus, so it
+        // can't trip any anti-cheat signal on this page.
+        const zoomSteps = [1, 1.1, 1.2, 1.3, 1.5];
+        let zoomIndex = zoomSteps.indexOf(parseFloat(localStorage.getItem('examZoomLevel')));
+        if (zoomIndex === -1) zoomIndex = 0;
+
+        function applyZoom() {
+            const level = zoomSteps[zoomIndex];
+            document.getElementById('questionsArea').style.zoom = level;
+            document.getElementById('zoomLevelLabel').textContent = Math.round(level * 100) + '%';
+            document.getElementById('zoomOutBtn').disabled = zoomIndex === 0;
+            document.getElementById('zoomInBtn').disabled = zoomIndex === zoomSteps.length - 1;
+            localStorage.setItem('examZoomLevel', level);
+        }
+
+        function adjustZoom(direction) {
+            zoomIndex = Math.min(zoomSteps.length - 1, Math.max(0, zoomIndex + direction));
+            applyZoom();
+        }
+
+        applyZoom();
 
         // Timer
         async function updateTimer() {
@@ -934,7 +951,7 @@
                 })
                 .catch(err => {
                     console.error(`[SELECT ERROR] Soal ${soalId}:`, err);
-                    showAlert(`PERINGATAN: Jawaban soal nomor ${index + 1} gagal disimpan!\n\nSilakan pilih jawaban lagi atau hubungi pengawas.`);
+                    showAlert(`Jawaban soal nomor ${index + 1} gagal disimpan!\n\nSilakan pilih jawaban lagi atau hubungi pengawas.`, { title: 'Gagal Disimpan', type: 'danger' });
                 });
             
             updateNavState(index, soalId);
@@ -997,7 +1014,7 @@
                 console.error('[UPLOAD] ✗ Error:', err);
                 statusEl.className = 'essay-image-status error';
                 statusEl.textContent = 'Gagal mengunggah gambar. Coba lagi.';
-                showAlert(`Gagal mengunggah gambar jawaban soal nomor ${index + 1}.\n\n${err.message}`);
+                showAlert(`Gagal mengunggah gambar jawaban soal nomor ${index + 1}.\n\n${err.message}`, { title: 'Gagal Mengunggah', type: 'danger' });
             })
             .finally(() => {
                 input.value = '';
@@ -1005,8 +1022,8 @@
         }
 
         // Remove the uploaded answer image (e.g. student wants to retake the photo)
-        function removeEssayImage(index, soalId) {
-            if (!showConfirm('Hapus gambar jawaban ini?')) return;
+        async function removeEssayImage(index, soalId) {
+            if (!(await showConfirm('Hapus gambar jawaban ini?', { title: 'Hapus Gambar', type: 'danger', okText: 'Hapus' }))) return;
 
             const url = `/exam/${ujianId}/save-jawaban-file`;
 
@@ -1033,7 +1050,7 @@
             })
             .catch(err => {
                 console.error('[REMOVE IMAGE] ✗ Error:', err);
-                showAlert('Gagal menghapus gambar. Silakan coba lagi.');
+                showAlert('Gagal menghapus gambar. Silakan coba lagi.', { title: 'Gagal Menghapus', type: 'danger' });
             });
         }
 
@@ -1123,7 +1140,7 @@
                 })
                 .catch(err2 => {
                     console.error('[SAVE] ✗ Retry failed:', err2);
-                    showAlert(`GAGAL MENYIMPAN JAWABAN!\n\nSoal ID: ${soalId}\nJawaban: ${jawaban}\n\nError: ${err2.message}\n\nSilakan screenshot ini dan hubungi pengawas!`);
+                    showAlert(`Gagal menyimpan jawaban!\n\nSoal ID: ${soalId}\nJawaban: ${jawaban}\n\nError: ${err2.message}\n\nSilakan screenshot ini dan hubungi pengawas!`, { title: 'Gagal Menyimpan', type: 'danger' });
                     throw err2;
                 });
             });
@@ -1284,7 +1301,7 @@
             }
             msg += '\n\nYakin ingin mengumpulkan jawaban?';
 
-            if (showConfirm(msg)) {
+            if (await showConfirm(msg, { title: 'Kumpulkan Jawaban', type: unanswered > 0 ? 'warning' : 'info', okText: 'Ya, Kumpulkan' })) {
                 // Pastikan semua jawaban tersimpan sebelum submit
                 await saveAllAnswers();
                 // Tunggu sebentar untuk memastikan request selesai
@@ -1354,7 +1371,7 @@
                 console.log(`✓✓✓ ALL ${savedCount} ANSWERS SAVED SUCCESSFULLY ✓✓✓`);
             } catch (err) {
                 console.error('✗✗✗ ERROR SAVING ANSWERS:', err);
-                showAlert('PERINGATAN: Beberapa jawaban gagal disimpan! Silakan coba submit lagi.');
+                showAlert('Beberapa jawaban gagal disimpan! Silakan coba submit lagi.', { title: 'Gagal Menyimpan', type: 'danger' });
                 throw err;
             }
         }
@@ -1433,66 +1450,95 @@
             });
         }
 
-        // Tab switch detection
-        //
-        // document.hidden can flip true→false for well under a second on
-        // mobile browsers for reasons that have nothing to do with actually
-        // leaving the exam: our own alert()/confirm() dialogs (see
-        // appDialogOpen above), the on-screen keyboard, a notification
-        // shade peek, autofill prompts, etc. Counting every blip as a
-        // violation false-positives on students who never left the page —
-        // e.g. it fired while a student was just opening the review modal
-        // to check answers before submitting.
-        //
-        // A genuine tab/app switch keeps the page hidden for at least a
-        // couple of seconds (human reaction time to switch back), so we
-        // require the hidden state to persist past a grace period before
-        // it counts. Short blips are ignored entirely.
-        let tabSwitchCount = 0;
+        // Pindah tab/browser dihitung setelah grace period untuk menghindari
+        // false positive dari keyboard mobile, autofill, atau dialog sistem singkat.
+        const tabSwitchStorageKey = `exam:${ujianId}:attempt:{{ $peserta->waktu_mulai->timestamp }}:tab-switch-count`;
+        function readTabSwitchCount() {
+            try {
+                const stored = Number.parseInt(sessionStorage.getItem(tabSwitchStorageKey) || '0', 10);
+                return Number.isFinite(stored) && stored > 0 ? stored : 0;
+            } catch (error) {
+                return 0;
+            }
+        }
+        function saveTabSwitchCount(value) {
+            try { sessionStorage.setItem(tabSwitchStorageKey, String(value)); } catch (error) {}
+        }
+        let tabSwitchCount = readTabSwitchCount();
+
         const hiddenGraceMs = 1500;
         let hiddenTimer = null;
+        let devToolsCheck = null;
+        let violationAutoSubmitTimer = null;
+        let violationSubmitting = false;
 
-        function registerTabSwitchViolation() {
+        function submitAntiCheatViolation(type, detail) {
+            if (violationSubmitting) return;
+            violationSubmitting = true;
+            clearTimeout(hiddenTimer);
+            clearTimeout(violationAutoSubmitTimer);
+            clearInterval(devToolsCheck);
+
+            document.getElementById('violationTypeInput').value = type;
+            document.getElementById('violationDetailInput').value = detail;
+            document.getElementById('antiCheatForm').submit();
+        }
+
+        function registerTabSwitchViolation(type = 'tab_switch', detail = 'Siswa berpindah tab atau membuka aplikasi/browser lain') {
+            if (cheatDetected || violationSubmitting) return;
+
             tabSwitchCount++;
-            console.warn(`⚠️ Tab switch detected! Count: ${tabSwitchCount}/${maxTabSwitch}`);
+            saveTabSwitchCount(tabSwitchCount);
+            console.warn(`⚠️ Anti-cheat detected! Count: ${tabSwitchCount}/${maxTabSwitch}`);
 
             if (tabSwitchCount >= maxTabSwitch) {
                 cheatDetected = true;
-                document.getElementById('cheatOverlay').classList.add('show');
+                clearTimeout(hiddenTimer);
+                clearInterval(devToolsCheck);
 
-                // Auto submit after 10 seconds
-                setTimeout(function() {
-                    document.getElementById('antiCheatForm').submit();
-                }, 10000);
-            } else {
-                showAlert(`⚠️ PERINGATAN ${tabSwitchCount}/${maxTabSwitch}\n\nAnda terdeteksi meninggalkan halaman ujian!\n\nJika terdeteksi ${maxTabSwitch} kali, ujian akan otomatis dikumpulkan.`);
+                const finalMessage = type === 'devtools'
+                    ? 'Developer Tools terdeteksi saat ujian berlangsung.'
+                    : 'Anda terdeteksi meninggalkan tab atau browser ujian.';
+
+                showAlert(`${finalMessage}\n\nBatas pelanggaran (${maxTabSwitch} kali) telah tercapai. Jawaban akan dikumpulkan otomatis dan akun akan dikeluarkan.`, {
+                    title: 'Ujian Dihentikan oleh Anti-Cheat',
+                    type: 'danger',
+                    okText: 'Kumpulkan & Keluar',
+                }).then(() => submitAntiCheatViolation(type, detail));
+
+                violationAutoSubmitTimer = setTimeout(
+                    () => submitAntiCheatViolation(type, detail),
+                    10000
+                );
+                return;
             }
+
+            const remaining = maxTabSwitch - tabSwitchCount;
+            const detectedMessage = type === 'devtools'
+                ? 'Sistem mendeteksi Developer Tools terbuka.'
+                : 'Sistem mendeteksi Anda meninggalkan tab atau browser ujian.';
+
+            showAlert(`${detectedMessage}\n\nPelanggaran: ${tabSwitchCount} dari ${maxTabSwitch}.\nSisa toleransi: ${remaining} kali. Setelah batas tercapai, ujian akan dikumpulkan otomatis.`, {
+                title: type === 'devtools' ? 'Developer Tools Terdeteksi' : 'Pindah Tab / Browser Terdeteksi',
+                type: 'danger',
+                okText: 'Saya Mengerti',
+            });
         }
 
-        let devToolsCheck = null;
-
         if (antiCheatEnabled) {
-            // document.hidden alone misses a very common way of leaving the
-            // exam: Alt+Tab (or clicking) to another app while the browser
-            // window stays open on screen. The tab is technically still
-            // "visible" in that case, so visibilitychange never fires — only
-            // window blur/focus do. We treat "hidden OR unfocused" as the
-            // student having left, and drive both event types through the
-            // same debounce/guard logic so a genuine tab switch (which fires
-            // both) doesn't double up.
             function isAwayFromExam() {
                 return document.hidden || !document.hasFocus();
             }
 
             function handleAwayCheck() {
-                if (cheatDetected) return;
+                if (cheatDetected || violationSubmitting) return;
 
                 if (isAwayFromExam()) {
-                    if (appDialogOpen) return; // our own dialog, not a real switch
+                    if (window.AppPopup?.isBlockingVisibility()) return;
 
                     clearTimeout(hiddenTimer);
                     hiddenTimer = setTimeout(function() {
-                        if (isAwayFromExam() && !appDialogOpen) {
+                        if (isAwayFromExam() && !window.AppPopup?.isBlockingVisibility()) {
                             registerTabSwitchViolation();
                         }
                     }, hiddenGraceMs);
@@ -1505,15 +1551,11 @@
             document.addEventListener('visibilitychange', handleAwayCheck);
             window.addEventListener('blur', handleAwayCheck);
             window.addEventListener('focus', handleAwayCheck);
+            document.addEventListener('app-popup:closed', () => setTimeout(handleAwayCheck, 650));
 
-            // Detect DevTools (desktop only — outerWidth/innerWidth stay equal
-            // on mobile browsers, so this heuristic is a no-op there). Reuses
-            // the same tab-switch violation counter/flow instead of just
-            // logging, and only counts once per open (devToolsWarned) so the
-            // 1s poll doesn't spam multiple violations while it stays open.
             let devToolsWarned = false;
             devToolsCheck = setInterval(function() {
-                if (cheatDetected) return;
+                if (cheatDetected || violationSubmitting || window.AppPopup?.isOpen()) return;
 
                 const threshold = 160;
                 const isOpen = window.outerWidth - window.innerWidth > threshold ||
@@ -1521,16 +1563,16 @@
 
                 if (isOpen && !devToolsWarned) {
                     devToolsWarned = true;
-                    console.warn('⚠️ DevTools detected');
-                    registerTabSwitchViolation();
+                    registerTabSwitchViolation('devtools', 'Siswa membuka Developer Tools selama ujian');
                 } else if (!isOpen) {
                     devToolsWarned = false;
                 }
             }, 1000);
         }
 
-        // Cleanup interval on page unload
         window.addEventListener('beforeunload', function() {
+            clearTimeout(hiddenTimer);
+            clearTimeout(violationAutoSubmitTimer);
             clearInterval(devToolsCheck);
         });
 

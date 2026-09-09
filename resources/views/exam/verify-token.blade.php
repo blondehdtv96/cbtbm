@@ -34,12 +34,6 @@
 
                 {{-- Token Form --}}
                 <div style="padding:28px 24px;">
-                    @if(session('error'))
-                    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#dc2626;padding:12px 16px;border-radius:12px;margin-bottom:20px;font-size:13px;font-weight:500;">
-                        <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ session('error') }}
-                    </div>
-                    @endif
-
                     <form method="POST" action="{{ route('exam.verify-token', $ujian) }}">
                         @csrf
                         <div class="mb-4">

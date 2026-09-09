@@ -60,7 +60,7 @@
                                         </div>
                                     </div>
                                     @if($siswa->user)
-                                    <form method="POST" action="{{ route('admin.siswa.reset-password', $siswa->user) }}" style="margin: 0;" onsubmit="return confirm('Reset password siswa ini? Password baru akan di-generate otomatis.')">
+                                    <form method="POST" action="{{ route('admin.siswa.reset-password', $siswa->user) }}" style="margin: 0;" data-confirm="Reset password siswa ini? Password baru akan dibuat otomatis." data-confirm-title="Reset Password" data-confirm-type="warning" data-confirm-ok="Ya, Reset">
                                         @csrf
                                         <button type="submit" class="btn btn-ios btn-ios-warning btn-ios-sm">
                                             <i class="bi bi-arrow-clockwise"></i> Reset Password

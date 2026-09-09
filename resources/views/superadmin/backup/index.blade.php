@@ -116,7 +116,7 @@
                                                     <i class="bi bi-arrow-counterclockwise"></i>
                                                 </button>
                                                 <form action="{{ route('superadmin.backup.destroy', $file['filename']) }}" method="POST" class="d-inline"
-                                                      onsubmit="return confirm('Hapus file backup {{ $file['filename'] }}? Tindakan ini tidak bisa dibatalkan.')">
+                                                      data-confirm="Hapus file backup {{ $file['filename'] }}? Tindakan ini tidak bisa dibatalkan." data-confirm-title="Hapus Backup" data-confirm-ok="Ya, Hapus">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-ios btn-ios-sm btn-ios-danger" title="Hapus">

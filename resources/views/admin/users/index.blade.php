@@ -61,7 +61,7 @@
                                     </button>
                                 </form>
                                 @if($user->id !== auth()->id())
-                                <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline" onsubmit="return confirm('Yakin hapus user ini?')">
+                                <form action="{{ route('admin.users.destroy', $user) }}" method="POST" class="d-inline" data-confirm="Yakin ingin menghapus pengguna ini?" data-confirm-title="Hapus Pengguna" data-confirm-ok="Ya, Hapus">
                                     @csrf @method('DELETE')
                                     <button type="submit" class="btn btn-ios btn-ios-sm btn-ios-danger"><i class="bi bi-trash"></i></button>
                                 </form>

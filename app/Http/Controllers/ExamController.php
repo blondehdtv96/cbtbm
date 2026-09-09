@@ -107,13 +107,17 @@ class ExamController extends Controller
             return redirect()->route('siswa.dashboard')->with('error', 'Anda sudah menyelesaikan ujian ini.');
         }
 
-        if (!$ujian->isActive()) {
-            return back()->with('error', 'Ujian belum dimulai atau sudah berakhir.');
-        }
-
-        // Verify token
+        // Verify token first so a correct token always gets an accurate,
+        // schedule-specific error instead of being masked by the generic
+        // "belum dimulai atau sudah berakhir" message.
         if (strtoupper($request->token) !== strtoupper($ujian->token)) {
             return back()->with('error', 'Token salah! Silakan periksa kembali token dari pengawas.')->withInput();
+        }
+
+        if (!$ujian->isActive()) {
+            $mulai = $ujian->tanggal_mulai->format('d M Y, H:i');
+            $selesai = $ujian->tanggal_selesai->format('d M Y, H:i');
+            return back()->with('error', "Token benar, namun ujian belum dimulai atau sudah berakhir. Jadwal ujian: {$mulai} – {$selesai}.");
         }
 
         // Token valid — start the exam

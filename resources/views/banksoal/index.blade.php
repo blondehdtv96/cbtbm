@@ -6,13 +6,6 @@
 @section('content')
 <div class="fade-in">
 
-    {{-- Flash --}}
-    @if(session('success'))
-    <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: #166534; padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px;">
-        <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
-    </div>
-    @endif
-
     {{-- Action Buttons (top bar, like reference) --}}
     <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
         <button type="button" class="btn btn-ios btn-ios-primary" data-bs-toggle="modal" data-bs-target="#modalTambahSoal">
@@ -122,7 +115,7 @@
                                 </a>
                                 {{-- Hapus Semua Soal Mapel --}}
                                 @if($m->total_soal > 0)
-                                <form action="{{ route('banksoal.bulk-destroy') }}" method="POST" onsubmit="return confirm('Yakin hapus semua {{ $m->total_soal }} soal {{ $m->nama_mapel }}?')" style="display:inline;">
+                                <form action="{{ route('banksoal.bulk-destroy') }}" method="POST" data-confirm="Yakin hapus semua {{ $m->total_soal }} soal {{ $m->nama_mapel }}?" data-confirm-title="Hapus Semua Soal" data-confirm-ok="Ya, Hapus" style="display:inline;">
                                     @csrf
                                     <input type="hidden" name="mapel_id" value="{{ $m->id }}">
                                     <input type="hidden" name="delete_all_mapel" value="1">

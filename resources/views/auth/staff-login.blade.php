@@ -480,19 +480,7 @@
                     <p>Masuk dengan email dan password akun Anda</p>
                 </div>
 
-                @if($errors->any())
-                    <div class="alert-error">
-                        <i class="bi bi-exclamation-circle-fill"></i>
-                        {{ $errors->first() }}
-                    </div>
-                @endif
-
-                @if(session('info'))
-                    <div class="alert-info">
-                        <i class="bi bi-info-circle-fill"></i>
-                        {{ session('info') }}
-                    </div>
-                @endif
+                <x-app-popup />
 
                 <form method="POST" action="{{ route('staff.login.process') }}">
                     @csrf

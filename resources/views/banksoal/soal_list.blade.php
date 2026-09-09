@@ -125,7 +125,7 @@
                             <div class="d-flex gap-1 justify-content-center">
                                 <button type="button" class="btn btn-ios btn-ios-sm btn-ios-light" onclick="showDetail({{ $soal->id }})" title="Detail"><i class="bi bi-eye"></i></button>
                                 <a href="{{ route('banksoal.edit', $soal) }}" class="btn btn-ios btn-ios-sm btn-ios-light" title="Edit"><i class="bi bi-pencil"></i></a>
-                                <form action="{{ route('banksoal.destroy', $soal) }}" method="POST" onsubmit="return confirm('Yakin hapus soal ini?')">
+                                <form action="{{ route('banksoal.destroy', $soal) }}" method="POST" data-confirm="Yakin ingin menghapus soal ini?" data-confirm-title="Hapus Soal" data-confirm-ok="Ya, Hapus">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-ios btn-ios-sm btn-ios-danger" title="Hapus"><i class="bi bi-trash"></i></button>
                                 </form>
@@ -256,10 +256,15 @@ function clearSelection() {
     updateBulkBar();
 }
 
-function confirmBulkDelete() {
+async function confirmBulkDelete() {
     const ids = getSelected();
     if (ids.length === 0) return;
-    if (!confirm(`Yakin hapus ${ids.length} soal yang dipilih? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+    const approved = await showConfirm(
+        `Yakin hapus ${ids.length} soal yang dipilih? Tindakan ini tidak bisa dibatalkan.`,
+        { title: 'Hapus Soal', type: 'danger', okText: 'Ya, Hapus' }
+    );
+    if (!approved) return;
 
     const container = document.getElementById('bulkIdsContainer');
     container.innerHTML = '';

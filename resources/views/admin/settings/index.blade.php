@@ -25,34 +25,6 @@
                 </div>
 
                 <div class="card-body">
-                    @if(session('success'))
-                        <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <i class="bi bi-check-circle me-2"></i>
-                            {{ session('success') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
-
-                    @if(session('error'))
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            {{ session('error') }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
-
-                    @if($errors->any())
-                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            <ul class="mb-0">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                        </div>
-                    @endif
-
                     <!-- Tabs -->
                     <ul class="nav nav-tabs mb-4" role="tablist">
                         @foreach($groups as $key => $label)
@@ -247,10 +219,11 @@ function confirmReset() {
 }
 
 // Delete image
-function deleteImage(key) {
-    if (!confirm('Yakin ingin menghapus gambar ini?')) {
-        return;
-    }
+async function deleteImage(key) {
+    const approved = await showConfirm('Yakin ingin menghapus gambar ini?', {
+        title: 'Hapus Gambar', type: 'danger', okText: 'Ya, Hapus'
+    });
+    if (!approved) return;
 
     fetch('{{ route("admin.settings.delete-image") }}', {
         method: 'POST',
@@ -274,10 +247,11 @@ function deleteImage(key) {
 }
 
 // Clear cache
-function clearCache() {
-    if (!confirm('Yakin ingin membersihkan cache?')) {
-        return;
-    }
+async function clearCache() {
+    const approved = await showConfirm('Yakin ingin membersihkan cache?', {
+        title: 'Bersihkan Cache', type: 'warning', okText: 'Ya, Bersihkan'
+    });
+    if (!approved) return;
 
     window.location.href = '{{ route("admin.settings.clear-cache") }}';
 }

@@ -6,18 +6,6 @@
 @section('content')
 <div class="fade-in">
 
-    @if(session('success'))
-    <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: #166534; padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px;">
-        <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
-    </div>
-    @endif
-
-    @if(session('error'))
-    <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#dc2626;padding:14px 18px;border-radius:14px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-weight:500;font-size:14px;">
-        <i class="bi bi-exclamation-triangle-fill"></i> {{ session('error') }}
-    </div>
-    @endif
-
     <div class="row g-4">
         {{-- Profile Card --}}
         <div class="col-lg-4">

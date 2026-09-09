@@ -6,12 +6,6 @@
 @section('content')
 <div class="fade-in">
 
-    @if(session('success'))
-    <div style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.2); color: #166534; padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 14px;">
-        <i class="bi bi-check-circle-fill"></i> {{ session('success') }}
-    </div>
-    @endif
-
     {{-- Toolbar --}}
     <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
         <form method="GET" class="d-flex gap-2 flex-grow-1">
@@ -68,7 +62,7 @@
                                     data-bs-toggle="modal" data-bs-target="#modalEdit{{ $guru->id }}">
                                     <i class="bi bi-pencil-fill" style="color:#f59e0b;"></i>
                                 </button>
-                                <form method="POST" action="{{ route('admin.guru.destroy', $guru) }}" onsubmit="return confirm('Hapus guru {{ $guru->nama }}? Data akun juga akan ikut terhapus!')">
+                                <form method="POST" action="{{ route('admin.guru.destroy', $guru) }}" data-confirm="Hapus guru {{ $guru->nama }}? Data akun juga akan ikut terhapus." data-confirm-title="Hapus Guru" data-confirm-ok="Ya, Hapus">
                                     @csrf @method('DELETE')
                                     <button class="btn btn-ios btn-ios-sm btn-ios-light" title="Hapus">
                                         <i class="bi bi-trash-fill" style="color:#ef4444;"></i>
