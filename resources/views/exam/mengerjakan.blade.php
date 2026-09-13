@@ -459,52 +459,75 @@
             .review-modal-grid { padding: 4px 14px 10px; }
         }
 
-        /* Text zoom controls — scales only the question content (via CSS
-           `zoom` on #questionsArea), so it never touches window/viewport
-           dimensions and can't be mistaken for the DevTools-size heuristic
-           or any other anti-cheat signal below. */
-        .zoom-controls {
-            display: flex;
-            align-items: center;
-            gap: 2px;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius-pill, 999px);
-            padding: 4px;
+        /* Image viewer: question/option images open at their real resolution and
+           can be zoomed independently without changing browser viewport size. */
+        .current-image-button {
+            display: none; align-items: center; gap: 7px; min-height: 36px; padding: 8px 12px;
+            border: 1px solid rgba(37, 99, 235, .18); border-radius: 11px;
+            color: var(--primary); background: rgba(37, 99, 235, .07);
+            font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
         }
-        .zoom-controls button {
-            width: 28px;
-            height: 28px;
-            border: none;
-            border-radius: 50%;
-            background: transparent;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 13px;
-            cursor: pointer;
-            transition: background 0.15s, color 0.15s;
+        .current-image-button.is-visible { display: inline-flex; }
+        .current-image-button:hover { color: #fff; background: var(--primary); }
+        .exam-image-frame {
+            position: relative; display: block; width: fit-content; max-width: 100%; margin: 0 0 16px;
+            padding: 0; overflow: hidden; border: 1px solid var(--border-color); border-radius: 13px;
+            background: #f8fafc; cursor: zoom-in; box-shadow: 0 2px 8px rgba(15, 23, 42, .06);
         }
-        .zoom-controls button:hover:not(:disabled) {
-            background: var(--primary);
-            color: #fff;
+        .exam-image-frame.option-image { margin-bottom: 9px; border-radius: 11px; }
+        .exam-image-frame img { display: block; max-width: 100%; height: auto; border-radius: inherit; }
+        .exam-image-hint {
+            position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 10px; border-radius: 9px; color: #fff; background: rgba(15, 23, 42, .78);
+            font-size: 10px; font-weight: 700; pointer-events: none; backdrop-filter: blur(5px);
         }
-        .zoom-controls button:disabled {
-            opacity: 0.35;
-            cursor: not-allowed;
+        .image-viewer {
+            display: none; position: fixed; inset: 0; z-index: 10500; grid-template-rows: auto minmax(0, 1fr) auto;
+            color: #fff; background: rgba(2, 6, 23, .97); user-select: none;
         }
-        .zoom-controls span {
-            font-size: 12px;
-            font-weight: 700;
-            color: var(--text-secondary);
-            min-width: 36px;
-            text-align: center;
-            font-variant-numeric: tabular-nums;
+        .image-viewer.is-visible { display: grid; animation: imageViewerFade .18s ease-out; }
+        .image-viewer__header {
+            display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,.1); background: rgba(15,23,42,.92);
         }
+        .image-viewer__title { min-width: 0; }
+        .image-viewer__title strong { display: block; overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+        .image-viewer__title small { display: block; margin-top: 2px; color: #94a3b8; font-size: 10px; }
+        .image-viewer__tools { display: flex; align-items: center; gap: 6px; }
+        .image-viewer__tools button {
+            display: inline-flex; align-items: center; justify-content: center; height: 36px; min-width: 36px;
+            padding: 0 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 10px;
+            color: #e2e8f0; background: rgba(255,255,255,.08); font-size: 13px; font-weight: 700; cursor: pointer;
+        }
+        .image-viewer__tools button:hover:not(:disabled) { color: #fff; background: rgba(255,255,255,.16); }
+        .image-viewer__tools button:disabled { opacity: .35; cursor: not-allowed; }
+        .image-viewer__tools .image-viewer__close { margin-left: 4px; color: #fecaca; background: rgba(220,38,38,.16); }
+        .image-viewer__level { min-width: 52px; color: #fff; font-size: 12px; font-weight: 800; text-align: center; }
+        .image-viewer__viewport {
+            position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain;
+            cursor: grab; scrollbar-color: #64748b #0f172a; touch-action: pan-x pan-y;
+        }
+        .image-viewer__viewport.is-dragging { cursor: grabbing; }
+        .image-viewer__canvas { position: relative; min-width: 100%; min-height: 100%; }
+        .image-viewer__image {
+            position: absolute; display: block; max-width: none; height: auto;
+            border-radius: 4px; box-shadow: 0 18px 60px rgba(0,0,0,.5); -webkit-user-drag: none;
+        }
+        .image-viewer__footer {
+            padding: 9px 14px calc(9px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(255,255,255,.08);
+            color: #94a3b8; background: rgba(15,23,42,.92); font-size: 10px; text-align: center;
+        }
+        @keyframes imageViewerFade { from { opacity: 0; } to { opacity: 1; } }
         @media (max-width: 768px) {
-            .zoom-controls button { width: 26px; height: 26px; font-size: 12px; }
-            .zoom-controls span { min-width: 30px; font-size: 11px; }
+            .current-image-button { width: 36px; padding: 0; justify-content: center; }
+            .current-image-button span { display: none; }
+            .exam-image-hint span { display: none; }
+            .image-viewer__header { align-items: flex-start; flex-direction: column; padding: 10px 12px; }
+            .image-viewer__title { width: 100%; padding-right: 42px; }
+            .image-viewer__tools { width: 100%; justify-content: center; }
+            .image-viewer__tools button { flex: 1; max-width: 52px; }
+            .image-viewer__tools .image-viewer__fit { max-width: 78px; }
+            .image-viewer__tools .image-viewer__close { position: absolute; top: 9px; right: 10px; width: 36px; }
         }
     </style>
 </head>
@@ -534,11 +557,9 @@
                 {{ auth()->user()->name }}
             </div>
 
-            <div class="zoom-controls" id="zoomControls" title="Ukuran Teks Soal">
-                <button type="button" id="zoomOutBtn" onclick="adjustZoom(-1)" aria-label="Perkecil teks soal"><i class="bi bi-dash-lg"></i></button>
-                <span id="zoomLevelLabel">100%</span>
-                <button type="button" id="zoomInBtn" onclick="adjustZoom(1)" aria-label="Perbesar teks soal"><i class="bi bi-plus-lg"></i></button>
-            </div>
+            <button type="button" class="current-image-button" id="currentImageButton" onclick="openCurrentQuestionImage()" aria-label="Perbesar gambar pada soal ini">
+                <i class="bi bi-zoom-in"></i><span>Perbesar Gambar</span>
+            </button>
 
             <div class="exam-timer" id="examTimer">
                 <i class="bi bi-clock-fill"></i>
@@ -583,7 +604,12 @@
                 </div>
 
                 @if($soal->gambar_soal)
-                    <img src="{{ asset('storage/' . $soal->gambar_soal) }}" alt="Gambar" style="max-width: 100%; border-radius: 12px; margin-bottom: 16px;">
+                    <button type="button" class="exam-image-frame" data-exam-image data-viewer-title="Gambar Soal Nomor {{ $index + 1 }}"
+                            onclick="event.stopPropagation(); openImageViewer(this.querySelector('img'), this.dataset.viewerTitle)"
+                            aria-label="Perbesar gambar soal nomor {{ $index + 1 }}">
+                        <img src="{{ asset('storage/' . $soal->gambar_soal) }}" alt="Gambar soal nomor {{ $index + 1 }}" loading="eager">
+                        <span class="exam-image-hint"><i class="bi bi-arrows-fullscreen"></i><span>Klik untuk perbesar</span></span>
+                    </button>
                 @endif
 
                 @if($soal->tipe_soal === 'pg' || $soal->tipe_soal === 'pg_kompleks')
@@ -594,7 +620,12 @@
                         <div class="option-label">{{ $opsi->opsi_label }}</div>
                         <div class="flex-grow-1">
                             @if($opsi->gambar_opsi)
-                                <img src="{{ asset('storage/' . $opsi->gambar_opsi) }}" alt="Opsi {{ $opsi->opsi_label }}" style="max-width: 100%; border-radius: 10px; margin-bottom: 8px; display: block;">
+                                <button type="button" class="exam-image-frame option-image" data-exam-image data-viewer-title="Gambar Opsi {{ $opsi->opsi_label }} · Soal {{ $index + 1 }}"
+                                        onclick="event.stopPropagation(); openImageViewer(this.querySelector('img'), this.dataset.viewerTitle)"
+                                        aria-label="Perbesar gambar opsi {{ $opsi->opsi_label }} pada soal nomor {{ $index + 1 }}">
+                                    <img src="{{ asset('storage/' . $opsi->gambar_opsi) }}" alt="Gambar opsi {{ $opsi->opsi_label }} soal nomor {{ $index + 1 }}" loading="eager">
+                                    <span class="exam-image-hint"><i class="bi bi-arrows-fullscreen"></i><span>Klik untuk perbesar</span></span>
+                                </button>
                             @endif
                             {{ $opsi->isi_opsi }}
                         </div>
@@ -775,6 +806,29 @@
         </div>
     </div>
 
+    <!-- Full-screen image viewer for question and option images -->
+    <div class="image-viewer" id="imageViewer" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="imageViewerTitle">
+        <div class="image-viewer__header">
+            <div class="image-viewer__title">
+                <strong id="imageViewerTitle">Gambar Soal</strong>
+                <small>Gunakan tombol zoom, scroll, atau geser gambar untuk melihat detail.</small>
+            </div>
+            <div class="image-viewer__tools">
+                <button type="button" id="imageZoomOut" onclick="adjustImageZoom(-1)" aria-label="Perkecil gambar"><i class="bi bi-dash-lg"></i></button>
+                <span class="image-viewer__level" id="imageZoomLevel">100%</span>
+                <button type="button" id="imageZoomIn" onclick="adjustImageZoom(1)" aria-label="Perbesar gambar"><i class="bi bi-plus-lg"></i></button>
+                <button type="button" class="image-viewer__fit" onclick="fitImageViewer()" title="Sesuaikan dengan layar"><i class="bi bi-aspect-ratio"></i> Fit</button>
+                <button type="button" class="image-viewer__close" onclick="closeImageViewer()" aria-label="Tutup gambar"><i class="bi bi-x-lg"></i></button>
+            </div>
+        </div>
+        <div class="image-viewer__viewport" id="imageViewerViewport">
+            <div class="image-viewer__canvas" id="imageViewerCanvas">
+                <img class="image-viewer__image" id="imageViewerImage" src="" alt="Gambar soal yang diperbesar" draggable="false">
+            </div>
+        </div>
+        <div class="image-viewer__footer"><i class="bi bi-lightbulb me-1"></i> Tekan +/− untuk zoom, tahan dan geser untuk berpindah area, atau tekan Esc untuk menutup.</div>
+    </div>
+
     <x-app-popup :flash="false" />
 
     <!-- Submit Form -->
@@ -850,33 +904,162 @@
         }
         generateWatermark();
 
-        // Text zoom (question content only). Uses CSS `zoom` on
-        // #questionsArea instead of relying on the browser's native
-        // Ctrl+/Ctrl-/pinch zoom — native zoom shrinks window.innerWidth
-        // while window.outerWidth stays put, which can cross the DevTools-
-        // size threshold below and false-flag a student as a cheater just
-        // for zooming in. Scaling one inner container never touches
-        // window/viewport dimensions, document.hidden, or focus, so it
-        // can't trip any anti-cheat signal on this page.
-        const zoomSteps = [1, 1.1, 1.2, 1.3, 1.5];
-        let zoomIndex = zoomSteps.indexOf(parseFloat(localStorage.getItem('examZoomLevel')));
-        if (zoomIndex === -1) zoomIndex = 0;
+        // Dedicated image viewer. It scales the image from its natural pixel
+        // dimensions (up to 400%) instead of scaling the page/viewport, so
+        // image details are actually enlarged without triggering anti-cheat.
+        const imageViewer = document.getElementById('imageViewer');
+        const imageViewerViewport = document.getElementById('imageViewerViewport');
+        const imageViewerCanvas = document.getElementById('imageViewerCanvas');
+        const imageViewerImage = document.getElementById('imageViewerImage');
+        const imageViewerTitle = document.getElementById('imageViewerTitle');
+        const imageZoomLevel = document.getElementById('imageZoomLevel');
+        const imageZoomOut = document.getElementById('imageZoomOut');
+        const imageZoomIn = document.getElementById('imageZoomIn');
+        const currentImageButton = document.getElementById('currentImageButton');
+        const minImageZoom = 0.1;
+        const maxImageZoom = 4;
+        let imageZoom = 1;
+        let imageViewerOpen = false;
+        let imageViewerTrigger = null;
+        let imageDragState = null;
 
-        function applyZoom() {
-            const level = zoomSteps[zoomIndex];
-            document.getElementById('questionsArea').style.zoom = level;
-            document.getElementById('zoomLevelLabel').textContent = Math.round(level * 100) + '%';
-            document.getElementById('zoomOutBtn').disabled = zoomIndex === 0;
-            document.getElementById('zoomInBtn').disabled = zoomIndex === zoomSteps.length - 1;
-            localStorage.setItem('examZoomLevel', level);
+        function renderImageZoom(centerImage = false) {
+            if (!imageViewerImage.naturalWidth || !imageViewerImage.naturalHeight) return;
+
+            const oldWidth = imageViewerImage.offsetWidth || 1;
+            const oldHeight = imageViewerImage.offsetHeight || 1;
+            const oldLeft = imageViewerImage.offsetLeft || 0;
+            const oldTop = imageViewerImage.offsetTop || 0;
+            const relativeX = (imageViewerViewport.scrollLeft + imageViewerViewport.clientWidth / 2 - oldLeft) / oldWidth;
+            const relativeY = (imageViewerViewport.scrollTop + imageViewerViewport.clientHeight / 2 - oldTop) / oldHeight;
+
+            const width = Math.max(1, Math.round(imageViewerImage.naturalWidth * imageZoom));
+            const height = Math.max(1, Math.round(imageViewerImage.naturalHeight * imageZoom));
+            const canvasWidth = Math.max(imageViewerViewport.clientWidth, width + 48);
+            const canvasHeight = Math.max(imageViewerViewport.clientHeight, height + 48);
+            const left = Math.max(24, (canvasWidth - width) / 2);
+            const top = Math.max(24, (canvasHeight - height) / 2);
+
+            imageViewerCanvas.style.width = canvasWidth + 'px';
+            imageViewerCanvas.style.height = canvasHeight + 'px';
+            imageViewerImage.style.width = width + 'px';
+            imageViewerImage.style.left = left + 'px';
+            imageViewerImage.style.top = top + 'px';
+            imageZoomLevel.textContent = Math.round(imageZoom * 100) + '%';
+            imageZoomOut.disabled = imageZoom <= minImageZoom + 0.001;
+            imageZoomIn.disabled = imageZoom >= maxImageZoom - 0.001;
+
+            requestAnimationFrame(() => {
+                if (centerImage) {
+                    imageViewerViewport.scrollLeft = Math.max(0, (canvasWidth - imageViewerViewport.clientWidth) / 2);
+                    imageViewerViewport.scrollTop = Math.max(0, (canvasHeight - imageViewerViewport.clientHeight) / 2);
+                } else {
+                    imageViewerViewport.scrollLeft = Math.max(0, left + relativeX * width - imageViewerViewport.clientWidth / 2);
+                    imageViewerViewport.scrollTop = Math.max(0, top + relativeY * height - imageViewerViewport.clientHeight / 2);
+                }
+            });
         }
 
-        function adjustZoom(direction) {
-            zoomIndex = Math.min(zoomSteps.length - 1, Math.max(0, zoomIndex + direction));
-            applyZoom();
+        function fitImageViewer() {
+            if (!imageViewerImage.naturalWidth || !imageViewerImage.naturalHeight) return;
+            const availableWidth = Math.max(100, imageViewerViewport.clientWidth - 48);
+            const availableHeight = Math.max(100, imageViewerViewport.clientHeight - 48);
+            imageZoom = Math.min(1, availableWidth / imageViewerImage.naturalWidth, availableHeight / imageViewerImage.naturalHeight);
+            imageZoom = Math.max(minImageZoom, imageZoom);
+            renderImageZoom(true);
         }
 
-        applyZoom();
+        function adjustImageZoom(direction) {
+            if (!imageViewerOpen) return;
+            const factor = direction > 0 ? 1.25 : 0.8;
+            imageZoom = Math.min(maxImageZoom, Math.max(minImageZoom, imageZoom * factor));
+            renderImageZoom(false);
+        }
+
+        function openImageViewer(sourceImage, title = 'Gambar Soal') {
+            if (!sourceImage || !sourceImage.src) return;
+
+            imageViewerTrigger = document.activeElement;
+            imageViewerTitle.textContent = title;
+            imageViewerImage.alt = sourceImage.alt || title;
+            imageViewerImage.src = sourceImage.currentSrc || sourceImage.src;
+            imageViewer.classList.add('is-visible');
+            imageViewer.setAttribute('aria-hidden', 'false');
+            imageViewerOpen = true;
+
+            const initialize = () => {
+                fitImageViewer();
+                document.querySelector('.image-viewer__close')?.focus({ preventScroll: true });
+            };
+            if (imageViewerImage.complete && imageViewerImage.naturalWidth) {
+                initialize();
+            } else {
+                imageViewerImage.addEventListener('load', initialize, { once: true });
+            }
+        }
+
+        function closeImageViewer() {
+            if (!imageViewerOpen) return;
+            imageViewer.classList.remove('is-visible');
+            imageViewer.setAttribute('aria-hidden', 'true');
+            imageViewerOpen = false;
+            imageDragState = null;
+            imageViewerViewport.classList.remove('is-dragging');
+            imageViewerTrigger?.focus?.({ preventScroll: true });
+        }
+
+        function openCurrentQuestionImage() {
+            const image = document.querySelector(`#soal-${currentSoal} [data-exam-image] img`);
+            const frame = image?.closest('[data-exam-image]');
+            if (image) openImageViewer(image, frame?.dataset.viewerTitle || `Gambar Soal Nomor ${currentSoal + 1}`);
+        }
+
+        function updateCurrentImageButton() {
+            const images = document.querySelectorAll(`#soal-${currentSoal} [data-exam-image]`);
+            currentImageButton.classList.toggle('is-visible', images.length > 0);
+            currentImageButton.title = images.length > 1
+                ? `Ada ${images.length} gambar pada soal ini. Klik untuk membuka gambar pertama.`
+                : 'Perbesar gambar pada soal ini';
+        }
+
+        imageViewerViewport.addEventListener('pointerdown', event => {
+            if (event.pointerType !== 'mouse' || event.button !== 0) return;
+            imageDragState = {
+                x: event.clientX,
+                y: event.clientY,
+                left: imageViewerViewport.scrollLeft,
+                top: imageViewerViewport.scrollTop,
+            };
+            imageViewerViewport.classList.add('is-dragging');
+            imageViewerViewport.setPointerCapture(event.pointerId);
+        });
+        imageViewerViewport.addEventListener('pointermove', event => {
+            if (!imageDragState) return;
+            imageViewerViewport.scrollLeft = imageDragState.left - (event.clientX - imageDragState.x);
+            imageViewerViewport.scrollTop = imageDragState.top - (event.clientY - imageDragState.y);
+        });
+        imageViewerViewport.addEventListener('pointerup', event => {
+            imageDragState = null;
+            imageViewerViewport.classList.remove('is-dragging');
+            if (imageViewerViewport.hasPointerCapture(event.pointerId)) imageViewerViewport.releasePointerCapture(event.pointerId);
+        });
+        imageViewerViewport.addEventListener('wheel', event => {
+            if (!event.ctrlKey) return;
+            event.preventDefault();
+            adjustImageZoom(event.deltaY < 0 ? 1 : -1);
+        }, { passive: false });
+        document.addEventListener('keydown', event => {
+            if (!imageViewerOpen) return;
+            if (event.key === 'Escape') closeImageViewer();
+            if (event.key === '+' || event.key === '=') adjustImageZoom(1);
+            if (event.key === '-') adjustImageZoom(-1);
+            if (event.key === '0') fitImageViewer();
+        });
+        window.addEventListener('resize', () => {
+            if (imageViewerOpen) fitImageViewer();
+        });
+
+        updateCurrentImageButton();
 
         // Timer
         async function updateTimer() {
@@ -925,6 +1108,7 @@
 
             currentSoal = index;
             updateProgress();
+            updateCurrentImageButton();
 
             document.getElementById('questionsArea').scrollTop = 0;
 
