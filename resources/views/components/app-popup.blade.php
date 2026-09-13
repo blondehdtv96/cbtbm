@@ -33,17 +33,18 @@
 <style>
     .app-popup-overlay {
         display: none; position: fixed; inset: 0; z-index: 11000; align-items: center; justify-content: center;
-        padding: 20px; background: rgba(15, 23, 42, .64); backdrop-filter: blur(4px);
+        padding: 20px; background: rgba(15, 23, 42, .68); backdrop-filter: blur(5px);
     }
     .app-popup-overlay.is-visible { display: flex; animation: appPopupFade .16s ease-out; }
     .app-popup-dialog {
-        width: min(100%, 420px); padding: 28px 24px 22px; border: 1px solid rgba(255,255,255,.65);
-        border-radius: 22px; background: #fff; box-shadow: 0 24px 70px rgba(15,23,42,.28);
-        text-align: center; animation: appPopupIn .2s cubic-bezier(.2,.8,.2,1);
+        width: min(100%, 420px); max-height: calc(100vh - 40px); padding: 28px 24px 22px;
+        border: 1px solid rgba(255,255,255,.65); border-radius: 22px; background: #fff;
+        box-shadow: 0 24px 70px rgba(15,23,42,.3); text-align: center;
+        animation: appPopupIn .2s cubic-bezier(.2,.8,.2,1);
     }
     .app-popup-icon {
         display: flex; align-items: center; justify-content: center; width: 62px; height: 62px;
-        margin: 0 auto 16px; border-radius: 18px; font-size: 29px;
+        margin: 0 auto 16px; border-radius: 18px; font-size: 29px; flex: 0 0 auto;
     }
     .app-popup-dialog.type-info .app-popup-icon { color: #2563eb; background: #eff6ff; }
     .app-popup-dialog.type-success .app-popup-icon { color: #16a34a; background: #f0fdf4; }
@@ -57,19 +58,40 @@
     .app-popup-actions { display: flex; gap: 10px; }
     .app-popup-actions button {
         flex: 1; min-height: 44px; padding: 11px 16px; border: 0; border-radius: 12px;
-        font: 700 13px Inter, sans-serif; cursor: pointer; transition: transform .12s, filter .15s;
+        font: 700 13px Inter, sans-serif; cursor: pointer; transition: transform .12s, filter .15s, opacity .15s;
     }
-    .app-popup-actions button:active { transform: scale(.97); }
+    .app-popup-actions button:active:not(:disabled) { transform: scale(.97); }
+    .app-popup-actions button:disabled { cursor: not-allowed; opacity: .5; }
     .app-popup-cancel { color: #475569; background: #f1f5f9; }
     .app-popup-ok { color: #fff; background: #2563eb; }
     .app-popup-dialog.type-success .app-popup-ok { background: #16a34a; }
     .app-popup-dialog.type-warning .app-popup-ok { background: #d97706; }
     .app-popup-dialog.type-danger .app-popup-ok { background: #dc2626; }
+    .app-popup-dialog.is-document {
+        display: flex; flex-direction: column; width: min(100%, 760px); padding: 24px;
+        text-align: left;
+    }
+    .app-popup-dialog.is-document .app-popup-icon {
+        width: 48px; height: 48px; margin: 0 0 12px; border-radius: 14px; font-size: 23px;
+    }
+    .app-popup-dialog.is-document .app-popup-title { margin-bottom: 14px; font-size: 20px; }
+    .app-popup-dialog.is-document .app-popup-message {
+        min-height: 180px; max-height: min(56vh, 540px); margin-bottom: 16px; padding: 18px 20px;
+        overflow-y: auto; overscroll-behavior: contain; border: 1px solid #e2e8f0; border-radius: 14px;
+        color: #334155; background: #f8fafc; font-size: 13.5px; line-height: 1.7;
+        white-space: pre-wrap; scrollbar-color: #94a3b8 #e2e8f0;
+    }
+    .app-popup-dialog.is-document .app-popup-message:focus { outline: 3px solid rgba(37,99,235,.18); border-color: #60a5fa; }
+    .app-popup-dialog.is-document .app-popup-actions { flex: 0 0 auto; justify-content: flex-end; }
+    .app-popup-dialog.is-document .app-popup-actions button { flex: 0 1 310px; }
     @keyframes appPopupFade { from { opacity: 0; } to { opacity: 1; } }
     @keyframes appPopupIn { from { opacity: 0; transform: translateY(12px) scale(.94); } to { opacity: 1; transform: none; } }
     @media (max-width: 480px) {
-        .app-popup-overlay { padding: 14px; align-items: flex-end; }
-        .app-popup-dialog { padding: 24px 18px 18px; border-radius: 22px 22px 16px 16px; }
+        .app-popup-overlay { padding: 10px; align-items: flex-end; }
+        .app-popup-dialog { max-height: calc(100vh - 20px); padding: 24px 18px 18px; border-radius: 22px 22px 16px 16px; }
+        .app-popup-dialog.is-document { padding: 18px 14px 14px; }
+        .app-popup-dialog.is-document .app-popup-message { max-height: 58vh; padding: 14px; }
+        .app-popup-dialog.is-document .app-popup-actions button { flex-basis: 100%; }
     }
 </style>
 
@@ -109,22 +131,42 @@
     function run(options) {
         const settings = Object.assign({
             title: 'Pemberitahuan', type: 'info', okText: 'OK', cancelText: 'Batal', showCancel: false,
+            documentMode: false, required: false, requireScroll: false, scrollText: 'Baca sampai selesai',
         }, options || {});
+        const type = icons[settings.type] ? settings.type : 'info';
+        const showCancel = settings.showCancel && !settings.required;
 
         return new Promise(resolve => {
             active = true;
             previousFocus = document.activeElement;
-            dialog.className = `app-popup-dialog type-${icons[settings.type] ? settings.type : 'info'}`;
-            icon.innerHTML = `<i class="bi ${icons[settings.type] || icons.info}"></i>`;
+            dialog.className = `app-popup-dialog type-${type}${settings.documentMode ? ' is-document' : ''}`;
+            icon.innerHTML = `<i class="bi ${icons[type]}"></i>`;
             title.textContent = settings.title;
             message.textContent = String(settings.message ?? '');
+            message.tabIndex = settings.documentMode ? 0 : -1;
             okButton.textContent = settings.okText;
+            okButton.disabled = false;
             cancelButton.textContent = settings.cancelText;
-            cancelButton.hidden = !settings.showCancel;
+            cancelButton.hidden = !showCancel;
             overlay.classList.add('is-visible');
             overlay.setAttribute('aria-hidden', 'false');
             document.dispatchEvent(new CustomEvent('app-popup:opened'));
-            (settings.showCancel ? cancelButton : okButton).focus({ preventScroll: true });
+
+            let scrollHandler = null;
+            if (settings.documentMode && settings.requireScroll) {
+                scrollHandler = () => {
+                    const reachedBottom = message.scrollHeight - message.scrollTop - message.clientHeight <= 8;
+                    okButton.disabled = !reachedBottom;
+                    okButton.textContent = reachedBottom ? settings.okText : settings.scrollText;
+                };
+                message.addEventListener('scroll', scrollHandler, { passive: true });
+                requestAnimationFrame(() => {
+                    scrollHandler();
+                    (okButton.disabled ? message : okButton).focus({ preventScroll: true });
+                });
+            } else {
+                (showCancel ? cancelButton : okButton).focus({ preventScroll: true });
+            }
 
             function finish(result) {
                 overlay.classList.remove('is-visible');
@@ -132,6 +174,7 @@
                 okButton.removeEventListener('click', onOk);
                 cancelButton.removeEventListener('click', onCancel);
                 document.removeEventListener('keydown', onKeydown);
+                if (scrollHandler) message.removeEventListener('scroll', scrollHandler);
                 active = false;
                 visibilityGuardUntil = Date.now() + 600;
                 if (previousFocus && typeof previousFocus.focus === 'function') {
@@ -140,21 +183,33 @@
                 document.dispatchEvent(new CustomEvent('app-popup:closed', { detail: { result } }));
                 resolve(result);
             }
-            function onOk() { finish(true); }
+            function onOk() {
+                if (!okButton.disabled) finish(true);
+            }
             function onCancel() { finish(false); }
             function onKeydown(event) {
-                if (event.key === 'Enter') { event.preventDefault(); onOk(); }
-                if (event.key === 'Escape' && settings.showCancel) { event.preventDefault(); onCancel(); }
+                if (event.key === 'Enter' && !settings.required && !okButton.disabled) {
+                    event.preventDefault();
+                    onOk();
+                }
+                if (event.key === 'Escape' && showCancel) {
+                    event.preventDefault();
+                    onCancel();
+                }
                 if (event.key === 'Tab') {
-                    const focusable = settings.showCancel ? [cancelButton, okButton] : [okButton];
+                    const focusable = [];
+                    if (settings.documentMode) focusable.push(message);
+                    if (showCancel) focusable.push(cancelButton);
+                    if (!okButton.disabled) focusable.push(okButton);
+                    if (!focusable.length) return;
                     const current = focusable.indexOf(document.activeElement);
                     event.preventDefault();
                     focusable[(current + (event.shiftKey ? -1 : 1) + focusable.length) % focusable.length].focus();
                 }
             }
 
-            okButton.addEventListener('click', onOk, { once: true });
-            cancelButton.addEventListener('click', onCancel, { once: true });
+            okButton.addEventListener('click', onOk);
+            cancelButton.addEventListener('click', onCancel);
             document.addEventListener('keydown', onKeydown);
         });
     }
@@ -172,6 +227,12 @@
         },
         confirm(message, options = {}) {
             return open(Object.assign({ title: 'Konfirmasi', okText: 'Ya, Lanjutkan' }, options, { message, showCancel: true }));
+        },
+        document(message, options = {}) {
+            return open(Object.assign({
+                title: 'Dokumen Wajib', okText: 'Saya Mengerti dan Menyetujui',
+                documentMode: true, required: true, requireScroll: true,
+            }, options, { message, showCancel: false }));
         },
         isOpen() { return active; },
         isBlockingVisibility() { return active || Date.now() < visibilityGuardUntil; },

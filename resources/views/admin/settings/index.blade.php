@@ -41,6 +41,8 @@
                                         <i class="bi bi-palette me-1"></i>
                                     @elseif($key === 'exam')
                                         <i class="bi bi-file-text me-1"></i>
+                                    @elseif($key === 'student')
+                                        <i class="bi bi-person-check-fill me-1"></i>
                                     @elseif($key === 'email')
                                         <i class="bi bi-envelope me-1"></i>
                                     @endif
@@ -60,6 +62,19 @@
                                 <div class="tab-pane fade {{ $loop->first ? 'show active' : '' }}" 
                                      id="{{ $groupKey }}" 
                                      role="tabpanel">
+
+                                    @if($groupKey === 'student')
+                                        <div class="alert alert-primary d-flex gap-3 align-items-start mb-4" role="alert">
+                                            <i class="bi bi-shield-check fs-4"></i>
+                                            <div>
+                                                <strong>Persetujuan per versi</strong>
+                                                <div class="small mt-1">
+                                                    Siswa wajib menggulir dan membaca peraturan sebelum tombol persetujuan aktif.
+                                                    Saat judul atau isi diubah, versi akan dinaikkan otomatis agar siswa menyetujui ulang.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                     
                                     <div class="row">
                                         @foreach($settings[$groupKey] as $setting)
@@ -83,7 +98,7 @@
                                                 @elseif($setting->type === 'textarea')
                                                     <textarea class="form-control" 
                                                               name="{{ $setting->key }}" 
-                                                              rows="3"
+                                                              rows="{{ $setting->key === 'student_rules_content' ? 18 : 3 }}"
                                                               placeholder="{{ $setting->label }}">{{ old($setting->key, $setting->value) }}</textarea>
 
                                                 @elseif($setting->type === 'number')
@@ -91,6 +106,7 @@
                                                            class="form-control" 
                                                            name="{{ $setting->key }}" 
                                                            value="{{ old($setting->key, $setting->value) }}"
+                                                           min="{{ $setting->key === 'student_rules_version' ? max(1, (int) $setting->value) : null }}"
                                                            placeholder="{{ $setting->label }}">
 
                                                 @elseif($setting->type === 'color')

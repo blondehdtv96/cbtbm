@@ -78,12 +78,37 @@ class DashboardController extends Controller
 
     public function siswa()
     {
-        $siswa = auth()->user()->siswa;
+        $user = auth()->user();
+        $siswa = $user->siswa;
+        $rulesEnabled = filter_var(
+            \App\Models\SystemSetting::get('student_rules_enabled', '1'),
+            FILTER_VALIDATE_BOOLEAN
+        );
+        $rulesVersion = max(1, (int) \App\Models\SystemSetting::get('student_rules_version', 1));
+        $mustAcceptRules = $rulesEnabled && (int) $user->student_rules_ack_version < $rulesVersion;
+
+        if ($mustAcceptRules) {
+            session()->put('student_rules_pending_version', $rulesVersion);
+        } else {
+            session()->forget('student_rules_pending_version');
+        }
 
         $data = [
             'ujianTersedia' => collect(),
             'riwayatUjian' => collect(),
             'siswa' => $siswa,
+            'studentRules' => [
+                'show' => $mustAcceptRules,
+                'title' => (string) \App\Models\SystemSetting::get(
+                    'student_rules_title',
+                    'Peraturan Penggunaan CBT untuk Siswa'
+                ),
+                'content' => (string) \App\Models\SystemSetting::get(
+                    'student_rules_content',
+                    'Baca dan patuhi seluruh peraturan ujian yang ditetapkan sekolah.'
+                ),
+                'version' => $rulesVersion,
+            ],
         ];
 
         if ($siswa) {
@@ -110,5 +135,33 @@ class DashboardController extends Controller
         }
 
         return view('dashboard.siswa', $data);
+    }
+
+    public function acknowledgeStudentRules(Request $request)
+    {
+        $rulesEnabled = filter_var(
+            \App\Models\SystemSetting::get('student_rules_enabled', '1'),
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (!$rulesEnabled) {
+            $request->session()->forget('student_rules_pending_version');
+
+            return response()->json(['success' => true, 'enabled' => false]);
+        }
+
+        $rulesVersion = max(1, (int) \App\Models\SystemSetting::get('student_rules_version', 1));
+        $request->user()->forceFill([
+            'student_rules_ack_version' => $rulesVersion,
+            'student_rules_acknowledged_at' => now(),
+        ])->save();
+
+        $request->session()->forget('student_rules_pending_version');
+
+        return response()->json([
+            'success' => true,
+            'version' => $rulesVersion,
+            'acknowledged_at' => now()->toIso8601String(),
+        ]);
     }
 }

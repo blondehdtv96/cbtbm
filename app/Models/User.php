@@ -14,6 +14,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name', 'email', 'username', 'password', 'plain_password', 'role', 'last_login', 'is_active',
         'login_attempts', 'locked_until', 'avatar', 'last_seen_at',
+        'student_rules_ack_version', 'student_rules_acknowledged_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -25,6 +26,8 @@ class User extends Authenticatable
         'locked_until' => 'datetime',
         'is_active' => 'boolean',
         'last_seen_at' => 'datetime',
+        'student_rules_ack_version' => 'integer',
+        'student_rules_acknowledged_at' => 'datetime',
     ];
 
     public function siswa()

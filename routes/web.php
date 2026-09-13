@@ -186,12 +186,14 @@ Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
 // Siswa Routes
 Route::middleware(['auth', 'role:siswa'])->prefix('siswa')->name('siswa.')->group(function () {
     Route::get('/dashboard', [DashboardController::class , 'siswa'])->name('dashboard');
+    Route::post('/peraturan/acknowledge', [DashboardController::class, 'acknowledgeStudentRules'])
+        ->name('rules.acknowledge');
 });
 
 // Exam Routes (Siswa)
 Route::middleware(['auth', 'role:siswa'])->prefix('exam')->name('exam.')->group(function () {
-    Route::get('/{ujian}/start', [ExamController::class , 'start'])->name('start');
-    Route::post('/{ujian}/verify-token', [ExamController::class , 'verifyToken'])->middleware('throttle.custom:10,1')->name('verify-token');
+    Route::get('/{ujian}/start', [ExamController::class , 'start'])->middleware('student.rules')->name('start');
+    Route::post('/{ujian}/verify-token', [ExamController::class , 'verifyToken'])->middleware(['student.rules', 'throttle.custom:10,1'])->name('verify-token');
     Route::get('/{ujian}/mengerjakan', [ExamController::class , 'mengerjakan'])->name('mengerjakan');
     Route::post('/{ujian}/save-jawaban', [ExamController::class , 'saveJawaban'])->middleware('throttle.custom:120,1')->name('save-jawaban');
     Route::post('/{ujian}/save-jawaban-file', [ExamController::class , 'saveJawabanFile'])->middleware('throttle.custom:30,1')->name('save-jawaban-file');

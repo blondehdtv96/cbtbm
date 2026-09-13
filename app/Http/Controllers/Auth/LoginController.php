@@ -64,6 +64,18 @@ class LoginController extends Controller
 
             ActivityLog::log('login', 'auth', 'Siswa login via Username');
 
+            $rulesEnabled = filter_var(
+                \App\Models\SystemSetting::get('student_rules_enabled', '1'),
+                FILTER_VALIDATE_BOOLEAN
+            );
+            $rulesVersion = max(1, (int) \App\Models\SystemSetting::get('student_rules_version', 1));
+
+            if ($rulesEnabled && (int) $user->student_rules_ack_version < $rulesVersion) {
+                $request->session()->put('student_rules_pending_version', $rulesVersion);
+            } else {
+                $request->session()->forget('student_rules_pending_version');
+            }
+
             return $this->redirectByRole($user);
         }
 

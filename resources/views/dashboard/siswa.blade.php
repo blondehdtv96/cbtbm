@@ -148,6 +148,47 @@
 @push('scripts')
 <script>
     (function () {
+        const studentRules = @json($studentRules);
+
+        async function enforceStudentRules() {
+            while (studentRules.show) {
+                await window.AppPopup.document(studentRules.content, {
+                    title: studentRules.title + ' • Versi ' + studentRules.version,
+                    type: 'info',
+                    okText: 'Saya Mengerti dan Menyetujui',
+                    scrollText: 'Gulir dan Baca Sampai Selesai',
+                });
+
+                try {
+                    const response = await fetch(@json(route('siswa.rules.acknowledge')), {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': @json(csrf_token()),
+                        },
+                        body: JSON.stringify({}),
+                    });
+                    const result = await response.json();
+
+                    if (!response.ok || !result.success) {
+                        throw new Error(result.message || 'Persetujuan belum dapat disimpan.');
+                    }
+
+                    studentRules.show = false;
+                } catch (error) {
+                    await window.AppPopup.alert(
+                        'Persetujuan peraturan gagal disimpan. Periksa koneksi lalu coba kembali.\n\n' + error.message,
+                        { title: 'Gagal Menyimpan Persetujuan', type: 'danger', okText: 'Coba Lagi' }
+                    );
+                }
+            }
+        }
+
+        if (studentRules.show) {
+            enforceStudentRules();
+        }
+
         function pad(n) { return String(n).padStart(2, '0'); }
 
         function tick() {
