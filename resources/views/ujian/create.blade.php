@@ -187,15 +187,10 @@
                         <div><h5>Jadwal dan penanggung jawab</h5><p>Tentukan sesi, rentang waktu akses, dan durasi pengerjaan.</p></div>
                     </div>
                     <div class="row g-3">
-                        <div class="col-lg-4 col-md-6">
-                            <label class="form-label-ios" for="sesiUjian">Sesi Ujian</label>
-                            <select name="sesi_ujian_id" id="sesiUjian" class="form-select-ios w-100">
-                                <option value="">Tanpa sesi khusus</option>
-                                @foreach($sesiList as $sesi)
-                                    <option value="{{ $sesi->id }}" {{ (string) old('sesi_ujian_id') === (string) $sesi->id ? 'selected' : '' }}>{{ $sesi->nama_sesi }} · {{ substr($sesi->jam_mulai, 0, 5) }}–{{ substr($sesi->jam_selesai, 0, 5) }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                        @include('ujian.partials.sesi-picker', [
+                            'selectedSesi' => old('sesi_ujian_id'),
+                            'columnClass' => 'col-12',
+                        ])
                         @if(!auth()->user()->isGuru())
                         <div class="col-lg-4 col-md-6">
                             <label class="form-label-ios" for="guruPengampu">Guru Pengampu</label>

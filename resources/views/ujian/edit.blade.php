@@ -27,16 +27,10 @@
                             </div>
                         </div>
                         <div class="row g-3 mb-4">
-                            <div class="col-md-3"><label class="form-label-ios">Sesi Ujian</label>
-                                <select name="sesi_ujian_id" class="form-select-ios w-100">
-                                    <option value="">-- Tanpa Sesi --</option>
-                                    @foreach($sesiList as $sesi)
-                                        <option value="{{ $sesi->id }}" {{ $ujian->sesi_ujian_id == $sesi->id ? 'selected' : '' }}>
-                                            {{ $sesi->nama_sesi }} ({{ substr($sesi->jam_mulai, 0, 5) }} – {{ substr($sesi->jam_selesai, 0, 5) }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+                            @include('ujian.partials.sesi-picker', [
+                                'selectedSesi' => old('sesi_ujian_id', $ujian->sesi_ujian_id),
+                                'columnClass' => 'col-12',
+                            ])
                             <div class="col-md-3"><label class="form-label-ios">Durasi</label><input type="number" name="durasi_menit" class="form-control-ios w-100" value="{{ $ujian->durasi_menit }}" required></div>
                             <div class="col-md-3" id="jumlahSoalWrap"><label class="form-label-ios">Jumlah Soal</label><input type="number" id="jumlahSoalInput" name="jumlah_soal" class="form-control-ios w-100" value="{{ $ujian->jumlah_soal }}"></div>
                             @if(!auth()->user()->isGuru())
@@ -79,8 +73,8 @@
 
                         @include('ujian.partials.soal-picker')
                         <div class="row g-3 mb-4">
-                            <div class="col-md-3"><label class="form-label-ios">Mulai</label><input type="datetime-local" name="tanggal_mulai" class="form-control-ios w-100" value="{{ $ujian->tanggal_mulai->format('Y-m-d\TH:i') }}" required></div>
-                            <div class="col-md-3"><label class="form-label-ios">Selesai</label><input type="datetime-local" name="tanggal_selesai" class="form-control-ios w-100" value="{{ $ujian->tanggal_selesai->format('Y-m-d\TH:i') }}" required></div>
+                            <div class="col-md-3"><label class="form-label-ios">Mulai</label><input type="datetime-local" id="tanggalMulai" name="tanggal_mulai" class="form-control-ios w-100" value="{{ old('tanggal_mulai', $ujian->tanggal_mulai->format('Y-m-d\TH:i')) }}" required></div>
+                            <div class="col-md-3"><label class="form-label-ios">Selesai</label><input type="datetime-local" id="tanggalSelesai" name="tanggal_selesai" class="form-control-ios w-100" value="{{ old('tanggal_selesai', $ujian->tanggal_selesai->format('Y-m-d\TH:i')) }}" required></div>
                         </div>
                         <div class="row g-3 mb-4">
                             <div class="col-md-3"><label class="form-label-ios">Status</label>

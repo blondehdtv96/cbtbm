@@ -25,7 +25,7 @@ class UjianController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Ujian::with(['mapel', 'guru']);
+        $query = Ujian::with(['mapel', 'guru', 'sesiUjian']);
 
         if (auth()->user()->isGuru() && auth()->user()->guru) {
             $query->where('guru_id', auth()->user()->guru->id);
@@ -34,13 +34,23 @@ class UjianController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
+        if ($request->filled('sesi_ujian_id')) {
+            $query->where('sesi_ujian_id', $request->sesi_ujian_id);
+        }
         if ($request->filled('search')) {
             $query->where('nama_ujian', 'like', "%{$request->search}%");
         }
 
-        $ujians = $query->latest()->paginate(15);
+        $now = now();
+        $ujians = $query
+            ->orderByRaw('CASE WHEN tanggal_selesai >= ? THEN 0 ELSE 1 END', [$now])
+            ->orderByRaw('CASE WHEN tanggal_selesai >= ? THEN tanggal_mulai END ASC', [$now])
+            ->orderByDesc('tanggal_mulai')
+            ->paginate(15);
 
-        return view('ujian.index', compact('ujians'));
+        $sesiList = SesiUjian::where('is_active', true)->orderBy('jam_mulai')->get();
+
+        return view('ujian.index', compact('ujians', 'sesiList'));
     }
 
     public function create()
@@ -58,6 +68,7 @@ class UjianController extends Controller
             'nama_ujian' => 'required|string|max:255',
             'jenis_ujian' => 'required|in:harian,uts,uas,praktik,tryout,anbk,ukk',
             'mapel_id' => 'required|exists:mapels,id',
+            'sesi_ujian_id' => 'nullable|exists:sesi_ujians,id',
             'durasi_menit' => 'required|integer|min:1',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
@@ -154,6 +165,7 @@ class UjianController extends Controller
             'nama_ujian' => 'required|string|max:255',
             'jenis_ujian' => 'required|in:harian,uts,uas,praktik,tryout,anbk,ukk',
             'mapel_id' => 'required|exists:mapels,id',
+            'sesi_ujian_id' => 'nullable|exists:sesi_ujians,id',
             'durasi_menit' => 'required|integer|min:1',
             'tanggal_mulai' => 'required|date',
             'tanggal_selesai' => 'required|date|after:tanggal_mulai',
