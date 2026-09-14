@@ -20,9 +20,40 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class UjianController extends Controller
 {
+    /**
+     * Stream a spreadsheet straight to the browser without writing a temp file.
+     *
+     * Writing to storage/app first is the usual cause of 500s on live servers
+     * (the web user often can't write there). Streaming to php://output avoids
+     * the filesystem entirely and keeps memory use low.
+     */
+    private function streamXlsx(Spreadsheet $spreadsheet, string $filename): StreamedResponse
+    {
+        // Drop any accidental output (stray whitespace/notices) so it can't
+        // corrupt the binary payload or trigger "headers already sent".
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $safeName = preg_replace('/[^A-Za-z0-9_\-\. ]/', '', $filename);
+        $safeName = trim(str_replace(' ', '_', $safeName)) ?: 'export.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
+            $writer->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, $safeName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate',
+            'Pragma' => 'public',
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = Ujian::with(['mapel', 'guru', 'sesiUjian']);
@@ -321,6 +352,7 @@ class UjianController extends Controller
 
     public function cetakNilai(Request $request, Ujian $ujian)
     {
+        try {
         $ujian->load(['mapel', 'kelasList']);
 
         $query = $ujian->pesertaUjians()->where('status', 'selesai')
@@ -411,15 +443,21 @@ class UjianController extends Controller
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
 
-        $filename = 'Nilai_Ujian_' . str_replace(' ', '_', $ujian->nama_ujian) . '_' . str_replace(' ', '_', $kelasName) . '_' . date('Ymd_His') . '.xlsx';
-        $tempPath = storage_path('app/' . $filename);
+        $filename = 'Nilai_Ujian_' . $ujian->nama_ujian . '_' . $kelasName . '_' . date('Ymd_His') . '.xlsx';
 
-        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
-        $writer->save($tempPath);
+            return $this->streamXlsx($spreadsheet, $filename);
+        } catch (\Throwable $e) {
+            Log::error('Gagal membuat file Excel hasil ujian', [
+                'ujian_id' => $ujian->id,
+                'kelas_id' => $request->input('kelas_id'),
+                'error' => $e->getMessage(),
+                'file' => $e->getFile() . ':' . $e->getLine(),
+            ]);
 
-        return response()->download($tempPath, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ])->deleteFileAfterSend(true);
+            return redirect()
+                ->route('ujian.hasil', ['ujian' => $ujian->id, 'kelas_id' => $request->input('kelas_id')])
+                ->with('error', 'File Excel gagal dibuat. Silakan coba lagi atau hubungi administrator.');
+        }
     }
 
     public function printNilai(Request $request, Ujian $ujian)
@@ -496,6 +534,7 @@ class UjianController extends Controller
      */
     public function nilaiResmiExcel(Request $request, Ujian $ujian)
     {
+        try {
         $data = $this->resolveNilaiResmiData($request, $ujian);
         ['peserta' => $peserta, 'kelasName' => $kelasName, 'namaSekolah' => $namaSekolah,
             'tahunAjaran' => $tahunAjaran, 'judul' => $judul] = $data;
@@ -571,15 +610,21 @@ class UjianController extends Controller
         $sheet->getColumnDimension('E')->setWidth(10);
         $sheet->getColumnDimension('F')->setWidth(12);
 
-        $filename = 'Nilai_Resmi_'.str_replace(' ', '_', $ujian->nama_ujian).'_'.str_replace(' ', '_', $kelasName).'_'.date('Ymd_His').'.xlsx';
-        $tempPath = storage_path('app/'.$filename);
+        $filename = 'Nilai_Resmi_'.$ujian->nama_ujian.'_'.$kelasName.'_'.date('Ymd_His').'.xlsx';
 
-        $writer = IOFactory::createWriter($spreadsheet, 'Xlsx');
-        $writer->save($tempPath);
+            return $this->streamXlsx($spreadsheet, $filename);
+        } catch (\Throwable $e) {
+            Log::error('Gagal membuat file Excel lembar nilai resmi', [
+                'ujian_id' => $ujian->id,
+                'kelas_id' => $request->input('kelas_id'),
+                'error' => $e->getMessage(),
+                'file' => $e->getFile() . ':' . $e->getLine(),
+            ]);
 
-        return response()->download($tempPath, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ])->deleteFileAfterSend(true);
+            return redirect()
+                ->route('ujian.hasil', ['ujian' => $ujian->id, 'kelas_id' => $request->input('kelas_id')])
+                ->with('error', 'Lembar Nilai Resmi (Excel) gagal dibuat. Silakan coba lagi atau hubungi administrator.');
+        }
     }
 
     /**
