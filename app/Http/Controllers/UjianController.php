@@ -350,25 +350,70 @@ class UjianController extends Controller
         return view('ujian.hasil', compact('ujian', 'peserta', 'kelasList'));
     }
 
-    public function cetakNilai(Request $request, Ujian $ujian)
+    /**
+     * Gabungkan peserta yang sudah menyelesaikan ujian dengan siswa di kelas
+     * terkait yang belum/tidak mengerjakan, lalu urutkan sesuai abjad nama.
+     * Dipakai oleh semua export Excel supaya datanya lengkap satu kelas.
+     */
+    private function pesertaTermasukTidakMengerjakan(Request $request, Ujian $ujian, array $withCount): \Illuminate\Support\Collection
     {
-        try {
-        $ujian->load(['mapel', 'kelasList']);
-
         $query = $ujian->pesertaUjians()->where('status', 'selesai')
             ->with('siswa.kelas')
-            ->withCount(['jawabanSiswas as benar_count' => function ($q) {
-            $q->where('is_correct', true);
-        }]);
+            ->withCount($withCount);
 
-        // Filter by kelas
         if ($request->filled('kelas_id')) {
             $query->whereHas('siswa', function ($q) use ($request) {
                 $q->where('kelas_id', $request->kelas_id);
             });
         }
 
-        $peserta = $query->orderBy('nilai', 'desc')->get();
+        $selesai = $query->get()->keyBy('siswa_id');
+
+        $kelasIds = $request->filled('kelas_id')
+            ? [(int) $request->kelas_id]
+            : $ujian->kelasList->pluck('id')->all();
+
+        $siswaQuery = Siswa::with('kelas');
+        if (!empty($kelasIds)) {
+            $siswaQuery->whereIn('kelas_id', $kelasIds);
+        } else {
+            // Ujian lama tanpa kelas_ujian: batasi ke siswa yang sudah tercatat sebagai peserta
+            $siswaQuery->whereIn('id', $selesai->keys());
+        }
+
+        return $siswaQuery->get()
+            ->map(function (Siswa $siswa) use ($selesai, $withCount) {
+                if ($peserta = $selesai->get($siswa->id)) {
+                    $peserta->setRelation('siswa', $siswa);
+                    return $peserta;
+                }
+
+                $peserta = new PesertaUjian(['siswa_id' => $siswa->id, 'status' => 'tidak_mengerjakan']);
+                $peserta->nilai = null;
+                $peserta->waktu_mulai = null;
+                $peserta->waktu_selesai = null;
+                foreach (array_keys($withCount) as $key) {
+                    $alias = str_contains($key, ' as ') ? trim(substr($key, strrpos($key, ' as ') + 4)) : $key;
+                    $peserta->{$alias} = 0;
+                }
+                $peserta->setRelation('siswa', $siswa);
+
+                return $peserta;
+            })
+            ->sortBy(fn ($p) => mb_strtolower($p->siswa->nama ?? ''))
+            ->values();
+    }
+
+    public function cetakNilai(Request $request, Ujian $ujian)
+    {
+        try {
+        $ujian->load(['mapel', 'kelasList']);
+
+        $peserta = $this->pesertaTermasukTidakMengerjakan($request, $ujian, [
+            'jawabanSiswas as benar_count' => function ($q) {
+                $q->where('is_correct', true);
+            },
+        ]);
 
         $kelasName = 'Semua Kelas';
         if ($request->filled('kelas_id')) {
@@ -391,7 +436,7 @@ class UjianController extends Controller
         $sheet->getStyle('A1')->getFont()->setSize(14);
 
         // Table Headers
-        $headers = ['Rank', 'Nama Siswa', 'NIS', 'Kelas', 'Benar', 'Nilai', 'Waktu Mulai', 'Waktu Selesai'];
+        $headers = ['No', 'Nama Siswa', 'NIS', 'Kelas', 'Benar', 'Nilai', 'Waktu Mulai', 'Waktu Selesai', 'Keterangan'];
         $col = 'A';
         foreach ($headers as $header) {
             $sheet->setCellValue($col . '6', $header);
@@ -413,33 +458,42 @@ class UjianController extends Controller
             ],
         ];
 
-        $sheet->getStyle('A6:H6')->applyFromArray($headerStyle);
+        $sheet->getStyle('A6:I6')->applyFromArray($headerStyle);
 
-        // Data Rows
+        // Data Rows (diurut sesuai abjad nama, termasuk siswa yang tidak mengerjakan)
         $row = 7;
         foreach ($peserta as $i => $p) {
+            $sudahMengerjakan = $p->status === 'selesai';
+
             $sheet->setCellValue('A' . $row, $i + 1);
             $sheet->setCellValue('B' . $row, $p->siswa->nama ?? '-');
             $sheet->setCellValueExplicit('C' . $row, $p->siswa->nis ?? '-', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $sheet->setCellValue('D' . $row, $p->siswa->kelas->nama_kelas ?? '-');
-            $sheet->setCellValue('E' . $row, $p->benar_count);
-            $sheet->setCellValue('F' . $row, $p->nilai);
+            $sheet->setCellValue('E' . $row, $sudahMengerjakan ? $p->benar_count : '-');
+            $sheet->setCellValue('F' . $row, $sudahMengerjakan ? $p->nilai : '-');
             $sheet->setCellValue('G' . $row, $p->waktu_mulai ? $p->waktu_mulai->format('d/m/Y H:i:s') : '-');
             $sheet->setCellValue('H' . $row, $p->waktu_selesai ? $p->waktu_selesai->format('d/m/Y H:i:s') : '-');
+            $sheet->setCellValue('I' . $row, $sudahMengerjakan ? 'Selesai' : 'Tidak Mengerjakan');
 
-            // Highlight score depending on value
-            $scoreColor = $p->nilai >= 75 ? '16A34A' : ($p->nilai >= 50 ? 'CA8A04' : 'DC2626');
-            $sheet->getStyle('F' . $row)->applyFromArray([
-                'font' => ['bold' => true, 'color' => ['rgb' => $scoreColor]],
-                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
-            ]);
+            if ($sudahMengerjakan) {
+                // Highlight score depending on value
+                $scoreColor = $p->nilai >= 75 ? '16A34A' : ($p->nilai >= 50 ? 'CA8A04' : 'DC2626');
+                $sheet->getStyle('F' . $row)->applyFromArray([
+                    'font' => ['bold' => true, 'color' => ['rgb' => $scoreColor]],
+                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+                ]);
+            } else {
+                $sheet->getStyle('I' . $row)->applyFromArray([
+                    'font' => ['italic' => true, 'color' => ['rgb' => 'DC2626']],
+                ]);
+            }
 
-            $sheet->getStyle('A' . $row . ':H' . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sheet->getStyle('A' . $row . ':I' . $row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
             $row++;
         }
 
         // Auto-width columns
-        foreach (range('A', 'H') as $columnID) {
+        foreach (range('A', 'I') as $columnID) {
             $sheet->getColumnDimension($columnID)->setAutoSize(true);
         }
 
@@ -492,32 +546,25 @@ class UjianController extends Controller
      */
     private function resolveNilaiResmiData(Request $request, Ujian $ujian): array
     {
-        $ujian->load(['mapel']);
-
-        $query = $ujian->pesertaUjians()->where('status', 'selesai')
-            ->with('siswa.kelas')
-            ->withCount([
-                'jawabanSiswas as benar_count' => function ($q) {
-                    $q->where('is_correct', true);
-                },
-                'jawabanSiswas as menjawab_count' => function ($q) {
-                    $q->whereNotNull('jawaban_dipilih')->where('jawaban_dipilih', '!=', '');
-                },
-            ]);
+        $ujian->load(['mapel', 'kelasList']);
 
         $kelasName = 'Semua Kelas';
         if ($request->filled('kelas_id')) {
-            $query->whereHas('siswa', function ($q) use ($request) {
-                $q->where('kelas_id', $request->kelas_id);
-            });
             $kelas = Kelas::find($request->kelas_id);
             if ($kelas) {
                 $kelasName = $kelas->nama_kelas;
             }
         }
 
-        // Urut sesuai nomor ujian (NISN) supaya konsisten dengan kartu peserta / absensi
-        $peserta = $query->get()->sortBy(fn ($p) => $p->siswa->nisn ?? $p->siswa->nis ?? '')->values();
+        // Termasuk siswa yang tidak mengerjakan, diurut sesuai abjad nama
+        $peserta = $this->pesertaTermasukTidakMengerjakan($request, $ujian, [
+            'jawabanSiswas as benar_count' => function ($q) {
+                $q->where('is_correct', true);
+            },
+            'jawabanSiswas as menjawab_count' => function ($q) {
+                $q->whereNotNull('jawaban_dipilih')->where('jawaban_dipilih', '!=', '');
+            },
+        ]);
 
         return [
             'ujian' => $ujian,
@@ -584,22 +631,29 @@ class UjianController extends Controller
 
         $row = 9;
         foreach ($peserta as $i => $p) {
+            $sudahMengerjakan = $p->status === 'selesai';
+
             $sheet->setCellValue('A'.$row, $i + 1);
             $sheet->setCellValueExplicit('B'.$row, $p->siswa->nisn ?? $p->siswa->nis ?? '-', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $sheet->setCellValue('C'.$row, $p->siswa->nama ?? '-');
-            $sheet->setCellValue('D'.$row, $p->menjawab_count);
-            $sheet->setCellValue('E'.$row, $p->benar_count);
-            $sheet->setCellValue('F'.$row, $p->nilai);
+            $sheet->setCellValue('D'.$row, $sudahMengerjakan ? $p->menjawab_count : '-');
+            $sheet->setCellValue('E'.$row, $sudahMengerjakan ? $p->benar_count : '-');
+            $sheet->setCellValue('F'.$row, $sudahMengerjakan ? $p->nilai : 'Tidak Mengerjakan');
 
             $sheet->getStyle('A'.$row.':F'.$row)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
             $sheet->getStyle('A'.$row.':B'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
             $sheet->getStyle('D'.$row.':F'.$row)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            if (!$sudahMengerjakan) {
+                $sheet->getStyle('F'.$row)->applyFromArray([
+                    'font' => ['italic' => true, 'color' => ['rgb' => 'DC2626']],
+                ]);
+            }
             $row++;
         }
 
         if ($peserta->isEmpty()) {
             $sheet->mergeCells('A9:F9');
-            $sheet->setCellValue('A9', 'Tidak ada peserta yang menyelesaikan ujian.');
+            $sheet->setCellValue('A9', 'Tidak ada siswa pada kelas ini.');
             $sheet->getStyle('A9')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         }
 

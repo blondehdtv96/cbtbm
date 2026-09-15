@@ -24,28 +24,6 @@
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
 
-        /* Watermark */
-        .watermark-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            z-index: 9999;
-            pointer-events: none;
-            overflow: hidden;
-        }
-        .watermark-overlay .watermark-text {
-            position: absolute;
-            font-size: 16px;
-            font-weight: 700;
-            color: rgba(0, 0, 0, 0.04);
-            white-space: nowrap;
-            transform: rotate(-35deg);
-            letter-spacing: 2px;
-            font-family: 'Poppins', sans-serif;
-        }
-
         /* Essay answer image upload */
         .essay-image-answer {
             margin-top: 14px;
@@ -532,9 +510,6 @@
     </style>
 </head>
 <body class="exam-fullscreen">
-    <!-- Watermark Overlay -->
-    <div class="watermark-overlay" id="watermarkOverlay"></div>
-
     <!-- Exam Shell (flex column: header + scrollable body, sized to real viewport) -->
     <div class="exam-shell">
     <!-- Exam Header -->
@@ -884,25 +859,6 @@
 
         // Popup global juga menjadi guard anti-cheat agar dialog aplikasi
         // tidak pernah dianggap sebagai perpindahan tab/browser.
-        // Generate Watermark
-        function generateWatermark() {
-            const overlay = document.getElementById('watermarkOverlay');
-            const name = "{{ auth()->user()->name }}";
-            const containerW = window.innerWidth;
-            const containerH = window.innerHeight;
-
-            for (let y = -100; y < containerH + 200; y += 120) {
-                for (let x = -200; x < containerW + 400; x += 280) {
-                    const el = document.createElement('div');
-                    el.className = 'watermark-text';
-                    el.textContent = name;
-                    el.style.left = x + 'px';
-                    el.style.top = y + 'px';
-                    overlay.appendChild(el);
-                }
-            }
-        }
-        generateWatermark();
 
         // Dedicated image viewer. It scales the image from its natural pixel
         // dimensions (up to 400%) instead of scaling the page/viewport, so
