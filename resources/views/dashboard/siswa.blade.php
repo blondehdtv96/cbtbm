@@ -12,27 +12,50 @@
 <div class="student-dashboard fade-in">
 
     @if($pelanggaranAktif->count() > 0)
+    @php
+        $violationLabels = [
+            'tab_switch' => 'Berpindah Tab / Membuka Aplikasi Lain',
+            'devtools' => 'Membuka Developer Tools',
+            'multi_window' => 'Split-Screen / Layar Mengambang / Pop-up View',
+        ];
+    @endphp
     <div class="sd-violation-stack" role="alert">
         @foreach($pelanggaranAktif as $i => $pelanggaran)
-        <div class="sd-violation-card" style="--sd-vc-delay: {{ $i * 90 }}ms;">
-            <div class="sd-violation-icon">
-                <span class="sd-violation-ring"></span>
-                <i class="bi bi-shield-exclamation"></i>
+        <div class="sd-violation-card" style="--sd-vc-delay: {{ $i * 80 }}ms;">
+            <div class="sd-violation-top">
+                <div class="sd-violation-icon"><i class="bi bi-shield-exclamation"></i></div>
+                <div class="sd-violation-heading">
+                    <p class="sd-violation-title">Pelanggaran Anti-Cheat Terdeteksi</p>
+                    <p class="sd-violation-sub">Ujian dihentikan otomatis oleh sistem</p>
+                </div>
+                <span class="sd-violation-status">
+                    <span class="sd-violation-dot"></span>
+                    Menunggu Tinjauan Admin
+                </span>
             </div>
-            <div class="sd-violation-content">
-                <div class="sd-violation-head">
-                    <span class="sd-violation-tag">Pelanggaran Anti-Cheat</span>
-                    <span class="sd-violation-time">
-                        <i class="bi bi-clock-history"></i>
-                        {{ $pelanggaran->violated_at?->format('d M Y, H:i') }}
-                    </span>
+
+            <div class="sd-violation-grid">
+                <div class="sd-violation-field">
+                    <span class="sd-violation-label">Ujian</span>
+                    <span class="sd-violation-value">{{ $pelanggaran->ujian->nama_ujian ?? '-' }}</span>
                 </div>
-                <p class="sd-violation-title">{{ $pelanggaran->ujian->nama_ujian ?? 'Ujian' }} dihentikan otomatis</p>
-                <p class="sd-violation-body">{{ $pelanggaran->violation_detail }}</p>
-                <div class="sd-violation-footer">
-                    <i class="bi bi-lock-fill"></i>
-                    Menunggu peninjauan admin/pengawas &bull; jawaban Anda tetap tersimpan aman
+                <div class="sd-violation-field">
+                    <span class="sd-violation-label">Waktu Kejadian</span>
+                    <span class="sd-violation-value">{{ $pelanggaran->violated_at?->format('d M Y, H:i') }} WIB</span>
                 </div>
+                <div class="sd-violation-field">
+                    <span class="sd-violation-label">Jenis Pelanggaran</span>
+                    <span class="sd-violation-value">{{ $violationLabels[$pelanggaran->violation_type] ?? ucfirst(str_replace('_', ' ', $pelanggaran->violation_type)) }}</span>
+                </div>
+                <div class="sd-violation-field sd-violation-field-wide">
+                    <span class="sd-violation-label">Keterangan Sistem</span>
+                    <span class="sd-violation-value">{{ $pelanggaran->violation_detail }}</span>
+                </div>
+            </div>
+
+            <div class="sd-violation-footer">
+                <i class="bi bi-shield-lock-fill"></i>
+                <span>Jawaban yang sudah Anda kerjakan <strong>tersimpan dengan aman</strong>. Hubungi guru atau admin pengawas untuk peninjauan lebih lanjut.</span>
             </div>
         </div>
         @endforeach
