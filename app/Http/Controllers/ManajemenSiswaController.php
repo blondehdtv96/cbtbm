@@ -89,12 +89,15 @@ class ManajemenSiswaController extends Controller
      */
     public function store(Request $request)
     {
+        $request->merge(['name' => trim((string) $request->name)]);
+
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:siswas,nama',
             'nisn' => 'required|string|max:20|unique:siswas,nisn',
             'nis' => 'required|string|unique:siswas,nis',
             'kelas_id' => 'required|exists:kelas,id',
         ], [
+            'name.unique' => 'Nama siswa sudah ada di sistem. Gunakan nama lengkap yang berbeda agar data tidak double.',
             'nisn.unique' => 'NISN sudah terdaftar di sistem.',
             'nis.unique' => 'NIS sudah terdaftar di sistem.',
         ]);
@@ -156,11 +159,17 @@ class ManajemenSiswaController extends Controller
      */
     public function update(Request $request, Siswa $siswa)
     {
+        $request->merge(['name' => trim((string) $request->name)]);
+
         $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:siswas,nama,' . $siswa->id,
             'nisn' => 'required|string|max:20|unique:siswas,nisn,' . $siswa->id,
             'nis' => 'required|string|unique:siswas,nis,' . $siswa->id,
             'kelas_id' => 'required|exists:kelas,id',
+        ], [
+            'name.unique' => 'Nama siswa sudah ada di sistem. Gunakan nama lengkap yang berbeda agar data tidak double.',
+            'nisn.unique' => 'NISN sudah terdaftar di sistem.',
+            'nis.unique' => 'NIS sudah terdaftar di sistem.',
         ]);
 
         DB::beginTransaction();

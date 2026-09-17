@@ -12,6 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.css" rel="stylesheet">
     <link href="{{ asset('css/app.css') }}" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/pusher-js@8.4.0/dist/web/pusher.min.js"></script>
     <style>
         body {
             background: linear-gradient(135deg, #f0f2f5 0%, #e8ecf4 100%);
@@ -22,6 +23,23 @@
             -ms-user-select: none;
             -webkit-touch-callout: none;
             font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        /* Banner shown briefly on a question card when its content was just
+           refreshed in real time after the admin edited it mid-exam */
+        .soal-live-banner {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(37, 99, 235, 0.1);
+            border: 1px solid rgba(37, 99, 235, 0.25);
+            color: #1d4ed8;
+            font-size: 12.5px;
+            font-weight: 600;
+            animation: pulse 1.4s ease-in-out 2;
         }
 
         /* Essay answer image upload */
@@ -558,81 +576,13 @@
 
             @foreach($soals as $index => $soal)
             <div class="question-card" id="soal-{{ $index }}" style="{{ $index > 0 ? 'display:none;' : '' }}">
-                <div class="d-flex align-items-center justify-content-between mb-3">
-                    <div class="d-flex align-items-center gap-2 gap-md-3">
-                        <div class="question-number">{{ $index + 1 }}</div>
-                        <span class="question-meta-chip d-none d-sm-inline-flex">
-                            <i class="bi {{ $soal->tipe_soal === 'essay' ? 'bi-pencil-square' : 'bi-list-check' }}"></i>
-                            {{ $soal->tipe_soal === 'essay' ? 'Esai' : 'Pilihan Ganda' }}
-                        </span>
-                    </div>
-                    <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 5px 12px; background: rgba(245, 158, 11, 0.08); border-radius: 10px; font-size: 12px; font-weight: 600; color: #f59e0b;">
-                        <input type="checkbox" class="ragu-checkbox" data-index="{{ $index }}" data-soal-id="{{ $soal->id }}"
-                               {{ in_array($soal->id, $raguRagu) ? 'checked' : '' }}
-                               onchange="toggleRagu({{ $index }}, {{ $soal->id }}, this.checked)">
-                        <i class="bi bi-flag-fill"></i> <span class="d-none d-sm-inline">Ragu-ragu</span>
-                    </label>
+                <div class="soal-live-banner" id="soalLiveBanner-{{ $index }}" style="display:none;">
+                    <i class="bi bi-arrow-repeat"></i> Soal ini baru saja diperbarui oleh pengawas.
                 </div>
 
-                <div class="question-text">
-                    {!! nl2br(e($soal->pertanyaan)) !!}
+                <div id="soal-content-{{ $index }}" data-soal-id="{{ $soal->id }}">
+                    @include('exam.partials.soal-body', ['soal' => $soal, 'index' => $index, 'jawabans' => $jawabans, 'jawabanFiles' => $jawabanFiles, 'raguRagu' => $raguRagu])
                 </div>
-
-                @if($soal->gambar_soal)
-                    <button type="button" class="exam-image-frame" data-exam-image data-viewer-title="Gambar Soal Nomor {{ $index + 1 }}"
-                            onclick="event.stopPropagation(); openImageViewer(this.querySelector('img'), this.dataset.viewerTitle)"
-                            aria-label="Perbesar gambar soal nomor {{ $index + 1 }}">
-                        <img src="{{ asset('storage/' . $soal->gambar_soal) }}" alt="Gambar soal nomor {{ $index + 1 }}" loading="eager">
-                        <span class="exam-image-hint"><i class="bi bi-arrows-fullscreen"></i><span>Klik untuk perbesar</span></span>
-                    </button>
-                @endif
-
-                @if($soal->tipe_soal === 'pg' || $soal->tipe_soal === 'pg_kompleks')
-                    @foreach($soal->opsiJawabans as $opsi)
-                    <div class="option-pill {{ ($jawabans[$soal->id] ?? '') === $opsi->opsi_label ? 'selected' : '' }}"
-                         onclick="selectOption({{ $index }}, {{ $soal->id }}, '{{ $opsi->opsi_label }}', this)"
-                         id="option-{{ $index }}-{{ $opsi->opsi_label }}">
-                        <div class="option-label">{{ $opsi->opsi_label }}</div>
-                        <div class="flex-grow-1">
-                            @if($opsi->gambar_opsi)
-                                <button type="button" class="exam-image-frame option-image" data-exam-image data-viewer-title="Gambar Opsi {{ $opsi->opsi_label }} · Soal {{ $index + 1 }}"
-                                        onclick="event.stopPropagation(); openImageViewer(this.querySelector('img'), this.dataset.viewerTitle)"
-                                        aria-label="Perbesar gambar opsi {{ $opsi->opsi_label }} pada soal nomor {{ $index + 1 }}">
-                                    <img src="{{ asset('storage/' . $opsi->gambar_opsi) }}" alt="Gambar opsi {{ $opsi->opsi_label }} soal nomor {{ $index + 1 }}" loading="eager">
-                                    <span class="exam-image-hint"><i class="bi bi-arrows-fullscreen"></i><span>Klik untuk perbesar</span></span>
-                                </button>
-                            @endif
-                            {{ $opsi->isi_opsi }}
-                        </div>
-                        <div class="option-check"><i class="bi bi-check-lg"></i></div>
-                    </div>
-                    @endforeach
-                @elseif($soal->tipe_soal === 'essay')
-                    <textarea class="form-control-ios w-100" rows="6"
-                              placeholder="Tulis jawaban Anda di sini..."
-                              oninput="saveEssay({{ $index }}, {{ $soal->id }}, this.value)"
-                              >{{ $jawabans[$soal->id] ?? '' }}</textarea>
-
-                    <div class="essay-image-answer" data-soal-id="{{ $soal->id }}">
-                        <div class="essay-image-label">
-                            <i class="bi bi-camera-fill"></i> Atau upload foto jawaban (opsional)
-                        </div>
-
-                        <div class="essay-image-preview {{ isset($jawabanFiles[$soal->id]) ? '' : 'd-none' }}" id="essayImagePreviewWrap-{{ $index }}">
-                            <img src="{{ isset($jawabanFiles[$soal->id]) ? asset('storage/' . $jawabanFiles[$soal->id]) : '' }}" id="essayImagePreview-{{ $index }}" alt="Gambar jawaban">
-                            <button type="button" class="essay-image-remove" onclick="removeEssayImage({{ $index }}, {{ $soal->id }})">
-                                <i class="bi bi-trash3-fill"></i> Hapus Gambar
-                            </button>
-                        </div>
-
-                        <label class="essay-image-upload-btn {{ isset($jawabanFiles[$soal->id]) ? 'd-none' : '' }}" id="essayImageUploadBtn-{{ $index }}">
-                            <i class="bi bi-cloud-arrow-up-fill"></i> Pilih / Ambil Foto
-                            <input type="file" accept="image/*" capture="environment" class="d-none" onchange="uploadEssayImage({{ $index }}, {{ $soal->id }}, this)">
-                        </label>
-
-                        <div class="essay-image-status" id="essayImageStatus-{{ $index }}"></div>
-                    </div>
-                @endif
 
                 <!-- Navigation -->
                 <div class="d-flex justify-content-between mt-4">
@@ -856,6 +806,77 @@
         let cheatDetected = false;
         const antiCheatEnabled = @json($antiCheatEnabled);
         const maxTabSwitch = {{ max(1, $maxTabSwitch) }}; // from admin setting "Maksimal Pindah Tab"
+
+        // ─── Real-time soal update (Laravel Reverb) ───────────────────────
+        // When an admin edits a soal that's part of this ujian while it's
+        // running, the server broadcasts SoalUpdated on a private channel and
+        // this page re-fetches that one soal's fresh HTML and swaps it in,
+        // without touching the student's timer, position, or saved answers.
+        // Non-critical: kalau setup koneksi real-time ini gagal (mis. Reverb
+        // server mati, koneksi WebSocket diblokir jaringan sekolah), jangan
+        // sampai melempar exception yang menghentikan sisa <script> ini —
+        // termasuk logic penyimpanan jawaban, timer, dan anti-cheat di bawahnya.
+        (function initSoalRealtime() {
+            try {
+                const reverbKey = @json(config('broadcasting.connections.reverb.key'));
+                if (typeof Pusher === 'undefined' || !reverbKey) {
+                    console.warn('[REALTIME] Reverb tidak dikonfigurasi, update soal real-time nonaktif.');
+                    return;
+                }
+
+                const pusher = new Pusher(reverbKey, {
+                    wsHost: @json(config('broadcasting.connections.reverb.options.host')),
+                    wsPort: @json((int) config('broadcasting.connections.reverb.options.port', 443)),
+                    wssPort: @json((int) config('broadcasting.connections.reverb.options.port', 443)),
+                    forceTLS: @json(config('broadcasting.connections.reverb.options.scheme') === 'https'),
+                    enabledTransports: ['ws', 'wss'],
+                    disableStats: true,
+                    authEndpoint: '/broadcasting/auth',
+                    auth: { headers: { 'X-CSRF-TOKEN': csrfToken } },
+                });
+
+                pusher.connection.bind('error', (err) => {
+                    console.warn('[REALTIME] Koneksi Reverb bermasalah, update soal real-time nonaktif.', err);
+                });
+
+                pusher.subscribe(`private-ujian.${ujianId}.soal`)
+                    .bind('soal.updated', (data) => refreshSoal(data.bank_soal_id));
+            } catch (err) {
+                console.warn('[REALTIME] Gagal inisialisasi real-time, fitur ini dinonaktifkan tapi ujian tetap berjalan normal.', err);
+            }
+        })();
+
+        async function refreshSoal(bankSoalId) {
+            if (!soalList.some(s => s.id === bankSoalId)) return;
+
+            try {
+                const res = await fetch(`/exam/${ujianId}/soal/${bankSoalId}`, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    console.error('[REALTIME] Gagal memuat ulang soal', data);
+                    return;
+                }
+
+                const container = document.getElementById(`soal-content-${data.index}`);
+                if (!container) return;
+                container.innerHTML = data.html;
+
+                const banner = document.getElementById(`soalLiveBanner-${data.index}`);
+                if (banner) {
+                    banner.style.display = 'flex';
+                    clearTimeout(banner._hideTimeout);
+                    banner._hideTimeout = setTimeout(() => { banner.style.display = 'none'; }, 6000);
+                }
+
+                updateNavState(data.index, bankSoalId);
+                updateProgress();
+                updateCurrentImageButton();
+            } catch (err) {
+                console.error('[REALTIME] Error memuat ulang soal', err);
+            }
+        }
 
         // Popup global juga menjadi guard anti-cheat agar dialog aplikasi
         // tidak pernah dianggap sebagai perpindahan tab/browser.
@@ -1451,68 +1472,31 @@
             }
         }
 
-        // Fungsi untuk menyimpan semua jawaban sebelum submit
+        // Fungsi untuk menyimpan semua jawaban sebelum submit.
+        // Pakai saveAnswer() (bukan fetch mentah) supaya tiap jawaban ikut
+        // menikmati retry otomatis yang sudah ada di sana, dan pakai
+        // allSettled (bukan Promise.all) supaya satu jawaban yang gagal tidak
+        // menggagalkan penyimpanan jawaban lain di momen paling kritis ini.
         async function saveAllAnswers() {
             console.log('=== SAVING ALL ANSWERS ===');
             console.log('Total answers in memory:', Object.keys(answers).length);
             console.log('Answers object:', answers);
-            
-            // Use relative URL to avoid APP_URL mismatch
-            const url = `/exam/${ujianId}/save-jawaban`;
-            const savePromises = [];
-            let savedCount = 0;
-            
-            // Simpan semua jawaban yang ada
-            for (const [soalId, jawaban] of Object.entries(answers)) {
-                // Simpan semua jawaban, termasuk yang kosong untuk memastikan record ada
-                const data = {
-                    bank_soal_id: parseInt(soalId),
-                    jawaban: jawaban || '', // Kirim string kosong jika null
-                };
-                
-                // Cek apakah soal ini ditandai ragu-ragu
-                if (raguMap[soalId]) {
-                    data.is_ragu = 1;
-                }
-                
-                console.log(`Saving soal ${soalId}:`, data);
-                
-                const promise = fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json',
-                    },
-                    body: JSON.stringify(data),
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(result => {
-                    savedCount++;
-                    console.log(`✓ Saved ${savedCount}/${Object.keys(answers).length}:`, soalId);
-                    return result;
-                })
-                .catch(err => {
-                    console.error(`✗ Failed to save soal ${soalId}:`, err);
-                    throw err;
-                });
-                
-                savePromises.push(promise);
-            }
-            
-            // Tunggu semua request selesai
-            try {
-                await Promise.all(savePromises);
-                console.log(`✓✓✓ ALL ${savedCount} ANSWERS SAVED SUCCESSFULLY ✓✓✓`);
-            } catch (err) {
-                console.error('✗✗✗ ERROR SAVING ANSWERS:', err);
-                showAlert('Beberapa jawaban gagal disimpan! Silakan coba submit lagi.', { title: 'Gagal Menyimpan', type: 'danger' });
-                throw err;
+
+            const entries = Object.entries(answers);
+
+            const results = await Promise.allSettled(entries.map(([soalId, jawaban]) => {
+                const isRagu = raguMap[soalId] ? true : false;
+                return saveAnswer(parseInt(soalId), jawaban || '', isRagu);
+            }));
+
+            const failed = results.filter(r => r.status === 'rejected');
+
+            if (failed.length === 0) {
+                console.log(`✓✓✓ ALL ${entries.length} ANSWERS SAVED SUCCESSFULLY ✓✓✓`);
+            } else {
+                console.error(`✗✗✗ ${failed.length}/${entries.length} ANSWERS FAILED TO SAVE:`, failed);
+                showAlert(`${failed.length} jawaban gagal disimpan setelah dicoba ulang! Periksa koneksi internet Anda lalu coba kumpulkan lagi.`, { title: 'Gagal Menyimpan', type: 'danger' });
+                throw new Error(`${failed.length} answers failed to save`);
             }
         }
 

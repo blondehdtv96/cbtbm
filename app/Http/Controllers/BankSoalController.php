@@ -2,15 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\SoalUpdated;
 use App\Models\BankSoal;
 use App\Models\Mapel;
 use App\Models\OpsiJawaban;
 use App\Models\Guru;
 use App\Models\ActivityLog;
+use App\Services\CacheService;
 use Illuminate\Http\Request;
 
 class BankSoalController extends Controller
 {
+    protected CacheService $cacheService;
+
+    public function __construct(CacheService $cacheService)
+    {
+        $this->cacheService = $cacheService;
+    }
+
     public function index(Request $request)
     {
         // ─── MODE 1: Grouped list by Mapel (default) ─────────────────────
@@ -24,6 +33,7 @@ class BankSoalController extends Controller
                 'bankSoals as total_soal' => fn($q) => $guruId ? $q->where('guru_id', $guruId) : $q,
                 'bankSoals as pg_soal' => fn($q) => ($guruId ? $q->where('guru_id', $guruId) : $q)->whereIn('tipe_soal', ['pg', 'pg_kompleks']),
                 'bankSoals as essay_soal' => fn($q) => ($guruId ? $q->where('guru_id', $guruId) : $q)->where('tipe_soal', 'essay'),
+                'bankSoals as bergambar_soal' => fn($q) => ($guruId ? $q->where('guru_id', $guruId) : $q)->whereNotNull('gambar_soal'),
             ]);
 
             // Guru: hanya tampilkan mapel yang di-assign via Data Guru
@@ -52,11 +62,27 @@ class BankSoalController extends Controller
         if ($request->filled('search')) {
             $query->where('pertanyaan', 'like', "%{$request->search}%");
         }
+        if ($request->boolean('bergambar')) {
+            $query->where(function ($q) {
+                $q->whereNotNull('gambar_soal')
+                    ->orWhereHas('opsiJawabans', fn($qq) => $qq->whereNotNull('gambar_opsi'));
+            });
+        }
+
+        // Total soal bergambar untuk mapel ini (di luar filter/paginasi, buat stat card)
+        $bergambarQuery = BankSoal::where('mapel_id', $request->mapel_id);
+        if (auth()->user()->isGuru() && auth()->user()->guru) {
+            $bergambarQuery->where('guru_id', auth()->user()->guru->id);
+        }
+        $totalBergambar = $bergambarQuery->where(function ($q) {
+            $q->whereNotNull('gambar_soal')
+                ->orWhereHas('opsiJawabans', fn($qq) => $qq->whereNotNull('gambar_opsi'));
+        })->count();
 
         $soals = $query->latest()->paginate(20);
         $mapelList = \App\Models\Mapel::where('is_active', true)->get();
 
-        return view('banksoal.soal_list', compact('soals', 'mapel', 'mapelList'));
+        return view('banksoal.soal_list', compact('soals', 'mapel', 'mapelList', 'totalBergambar'));
     }
 
     public function create()
@@ -201,7 +227,32 @@ class BankSoalController extends Controller
 
         ActivityLog::log('update', 'bank_soal', "Mengupdate soal: {$banksoal->id}");
 
+        $this->notifyUjiansOfSoalUpdate($banksoal);
+
         return redirect()->route('banksoal.index')->with('success', 'Soal berhasil diupdate!');
+    }
+
+    /**
+     * Invalidate the cached soal set for every ujian that uses this soal (so a
+     * fresh page load never serves stale content) and push a real-time update
+     * to any ujian that's currently in progress, so siswa already mid-exam see
+     * the change without reloading.
+     */
+    private function notifyUjiansOfSoalUpdate(BankSoal $banksoal): void
+    {
+        $ujians = $banksoal->ujians()->get(['ujians.id', 'ujians.status', 'ujians.tanggal_mulai', 'ujians.tanggal_selesai']);
+
+        foreach ($ujians as $ujian) {
+            $this->cacheService->invalidateUjian($ujian->id);
+
+            if ($ujian->isActive()) {
+                try {
+                    broadcast(new SoalUpdated($ujian->id, $banksoal->id));
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('Gagal broadcast SoalUpdated: ' . $e->getMessage());
+                }
+            }
+        }
     }
 
     public function destroy(BankSoal $banksoal)

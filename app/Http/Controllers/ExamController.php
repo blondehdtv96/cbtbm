@@ -211,6 +211,60 @@ class ExamController extends Controller
     }
 
     /**
+     * Return the freshly rendered HTML for one soal, used by the client when
+     * it receives a real-time SoalUpdated broadcast while the exam is
+     * running. Re-reads soal + opsi from the DB (the cache was already
+     * invalidated by BankSoalController@update) so the siswa never sees
+     * stale content once an admin edits a question mid-exam.
+     */
+    public function soalContent(Ujian $ujian, BankSoal $banksoal)
+    {
+        $siswa = auth()->user()->siswa;
+        $peserta = PesertaUjian::where('ujian_id', $ujian->id)
+            ->where('siswa_id', $siswa->id)
+            ->where('status', 'sedang')
+            ->first();
+
+        if (!$peserta) {
+            return response()->json(['error' => 'Sesi tidak valid'], 403);
+        }
+
+        $soalOrder = $peserta->getSoalOrderArray();
+        $index = array_search($banksoal->id, $soalOrder, true);
+
+        if ($index === false) {
+            return response()->json(['error' => 'Soal tidak ditemukan pada sesi ini'], 404);
+        }
+
+        $soal = BankSoal::with('opsiJawabans')->find($banksoal->id);
+
+        if (!$soal) {
+            return response()->json(['error' => 'Soal tidak ditemukan'], 404);
+        }
+
+        if ($ujian->acak_opsi) {
+            $soal->setRelation('opsiJawabans', $soal->opsiJawabans->shuffle());
+        }
+
+        $jawabanSiswa = JawabanSiswa::where('peserta_ujian_id', $peserta->id)
+            ->where('bank_soal_id', $soal->id)
+            ->first();
+
+        $jawabans = $jawabanSiswa ? [$soal->id => $jawabanSiswa->jawaban_dipilih] : [];
+        $jawabanFiles = $jawabanSiswa && $jawabanSiswa->jawaban_file ? [$soal->id => $jawabanSiswa->jawaban_file] : [];
+        $raguRagu = $jawabanSiswa && $jawabanSiswa->is_ragu ? [$soal->id] : [];
+
+        $html = view('exam.partials.soal-body', compact('soal', 'index', 'jawabans', 'jawabanFiles', 'raguRagu'))->render();
+
+        return response()->json([
+            'success' => true,
+            'index' => $index,
+            'bank_soal_id' => $soal->id,
+            'html' => $html,
+        ]);
+    }
+
+    /**
      * Save single answer (AJAX autosave)
      */
     public function saveJawaban(Request $request, Ujian $ujian)

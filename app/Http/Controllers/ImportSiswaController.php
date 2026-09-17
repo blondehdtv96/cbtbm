@@ -172,14 +172,16 @@ class ImportSiswaController extends Controller
             return strtolower(trim($k->nama_kelas));
         });
 
-        // Existing NISN/NIS for duplicate checking
+        // Existing NISN/NIS/Nama for duplicate checking
         $existingNisn = Siswa::pluck('nisn')->filter()->toArray();
         $existingNis = Siswa::pluck('nis')->toArray();
+        $existingNama = Siswa::pluck('nama')->map(fn($n) => strtolower(trim($n)))->toArray();
 
         $previewData = [];
         $errors = [];
         $nisnSeen = [];
         $nisSeen = [];
+        $namaSeen = [];
 
         foreach ($rows as $rowIdx => $row) {
             $rowNum = $rowIdx + 1;
@@ -221,9 +223,17 @@ class ImportSiswaController extends Controller
             $nisSeen[] = $nis;
 
             // Validate Nama
+            $namaKey = strtolower($nama);
             if (empty($nama)) {
                 $rowErrors[] = 'Nama kosong';
             }
+            elseif (in_array($namaKey, $existingNama)) {
+                $rowErrors[] = "Nama '{$nama}' sudah ada di sistem";
+            }
+            elseif (in_array($namaKey, $namaSeen)) {
+                $rowErrors[] = "Nama '{$nama}' duplikat dalam file";
+            }
+            $namaSeen[] = $namaKey;
 
             // Resolve kelas
             $resolvedKelas = null;

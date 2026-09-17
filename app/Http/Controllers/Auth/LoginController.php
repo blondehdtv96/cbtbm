@@ -8,6 +8,7 @@ use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
@@ -55,6 +56,7 @@ class LoginController extends Controller
 
             Auth::login($user, $request->filled('remember'));
             $request->session()->regenerate();
+            $this->rememberLoginDate();
 
             $user->update([
                 'login_attempts' => 0,
@@ -132,6 +134,8 @@ class LoginController extends Controller
                 ]);
             }
 
+            $this->rememberLoginDate();
+
             $user->update([
                 'login_attempts' => 0,
                 'locked_until' => null,
@@ -167,8 +171,23 @@ class LoginController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+        Cookie::queue(Cookie::forget(\App\Http\Middleware\LogoutOnNewDay::COOKIE));
 
         return redirect()->route('login');
+    }
+
+    /**
+     * Stamps today's date in a cookie so LogoutOnNewDay can force a
+     * re-login once the calendar day rolls over, regardless of how much
+     * of the session/remember-me lifetime is still left.
+     */
+    protected function rememberLoginDate(): void
+    {
+        Cookie::queue(
+            \App\Http\Middleware\LogoutOnNewDay::COOKIE,
+            now()->toDateString(),
+            now()->diffInMinutes(now()->endOfDay()) + 1
+        );
     }
 
     protected function redirectByRole($user)

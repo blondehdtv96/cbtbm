@@ -30,6 +30,7 @@
                         <th>Mata Pelajaran</th>
                         <th style="text-align: center;">Soal PG</th>
                         <th style="text-align: center;">Soal Essay</th>
+                        <th style="text-align: center;">Bergambar</th>
                         <th style="text-align: center;">Total</th>
                         <th>Jurusan</th>
                         <th style="text-align: center;">Status</th>
@@ -63,6 +64,13 @@
                         <td style="text-align: center;">
                             @if($m->essay_soal > 0)
                                 <span class="badge-ios info">{{ $m->essay_soal }} soal</span>
+                            @else
+                                <span style="color: #cbd5e1; font-size: 13px;">—</span>
+                            @endif
+                        </td>
+                        <td style="text-align: center;">
+                            @if($m->bergambar_soal > 0)
+                                <span class="badge-ios warning"><i class="bi bi-image-fill me-1"></i>{{ $m->bergambar_soal }} soal</span>
                             @else
                                 <span style="color: #cbd5e1; font-size: 13px;">—</span>
                             @endif
@@ -132,7 +140,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9">
+                        <td colspan="10">
                             <div class="empty-state">
                                 <i class="bi bi-book"></i>
                                 <h5>Belum ada mata pelajaran</h5>

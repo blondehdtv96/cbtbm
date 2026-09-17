@@ -195,6 +195,7 @@ Route::middleware(['auth', 'role:siswa'])->prefix('exam')->name('exam.')->group(
     Route::get('/{ujian}/start', [ExamController::class , 'start'])->middleware('student.rules')->name('start');
     Route::post('/{ujian}/verify-token', [ExamController::class , 'verifyToken'])->middleware(['student.rules', 'throttle.custom:10,1'])->name('verify-token');
     Route::get('/{ujian}/mengerjakan', [ExamController::class , 'mengerjakan'])->name('mengerjakan');
+    Route::get('/{ujian}/soal/{banksoal}', [ExamController::class , 'soalContent'])->middleware('throttle.custom:60,1')->name('soal-content');
     Route::post('/{ujian}/save-jawaban', [ExamController::class , 'saveJawaban'])->middleware('throttle.custom:120,1')->name('save-jawaban');
     Route::post('/{ujian}/save-jawaban-file', [ExamController::class , 'saveJawabanFile'])->middleware('throttle.custom:30,1')->name('save-jawaban-file');
     Route::delete('/{ujian}/save-jawaban-file', [ExamController::class , 'deleteJawabanFile'])->middleware('throttle.custom:30,1')->name('delete-jawaban-file');

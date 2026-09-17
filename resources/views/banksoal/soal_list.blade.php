@@ -29,6 +29,13 @@
                 <div style="font-size: 12px; color: #64748b; font-weight: 500;">Jurusan</div>
             </div>
         </div>
+        <div class="col-6 col-md-3">
+            <a href="{{ route('banksoal.index', array_filter(['mapel_id' => $mapel->id, 'bergambar' => 1, 'tipe_soal' => request('tipe_soal'), 'search' => request('search')])) }}"
+               style="display:block; background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.15); border-radius: 14px; padding: 16px 20px; text-decoration:none;">
+                <div style="font-size: 24px; font-weight: 800; color: #d97706;"><i class="bi bi-image-fill" style="font-size:18px; vertical-align:2px;"></i> {{ $totalBergambar }}</div>
+                <div style="font-size: 12px; color: #64748b; font-weight: 500;">Soal Bergambar</div>
+            </a>
+        </div>
     </div>
 
     {{-- Toolbar --}}
@@ -46,6 +53,10 @@
                 <option value="essay" {{ request('tipe_soal') == 'essay' ? 'selected' : '' }}>Essay</option>
                 <option value="pg_kompleks" {{ request('tipe_soal') == 'pg_kompleks' ? 'selected' : '' }}>PG Kompleks</option>
             </select>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer; padding: 0 12px; font-size:13px; font-weight:600; color:#64748b;">
+                <input type="checkbox" name="bergambar" value="1" {{ request('bergambar') ? 'checked' : '' }} onchange="this.form.submit()" style="width:16px; height:16px; accent-color:#f59e0b;">
+                <i class="bi bi-image-fill" style="color:#d97706;"></i> Bergambar saja
+            </label>
             <button type="submit" class="btn btn-ios btn-ios-light"><i class="bi bi-search"></i></button>
         </form>
         <div class="d-flex gap-2">
@@ -94,6 +105,7 @@
                         <th style="width:40px; text-align:center;">No.</th>
                         <th>Pertanyaan</th>
                         <th>Tipe</th>
+                        <th style="text-align:center;">Gambar</th>
                         <th style="text-align:center;">Bobot</th>
                         <th>Oleh</th>
                         <th>Status</th>
@@ -118,6 +130,24 @@
                             @endif
                         </td>
                         <td><span class="badge-ios {{ $soal->tipe_soal === 'essay' ? 'info' : 'purple' }}">{{ strtoupper(str_replace('_', ' ', $soal->tipe_soal)) }}</span></td>
+                        <td style="text-align:center;">
+                            @php $opsiGambarCount = $soal->opsiJawabans->whereNotNull('gambar_opsi')->count(); @endphp
+                            @if($soal->gambar_soal || $opsiGambarCount > 0)
+                                <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+                                    @if($soal->gambar_soal)
+                                        <a href="{{ asset('storage/' . $soal->gambar_soal) }}" target="_blank" rel="noopener" title="Lihat gambar soal — diupdate {{ $soal->updated_at->diffForHumans() }}">
+                                            <img src="{{ asset('storage/' . $soal->gambar_soal) }}" alt="Gambar soal" style="width:36px; height:36px; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0;">
+                                        </a>
+                                    @endif
+                                    @if($opsiGambarCount > 0)
+                                        <span class="badge-ios warning" style="font-size:10px;"><i class="bi bi-images"></i> {{ $opsiGambarCount }} opsi</span>
+                                    @endif
+                                    <small style="color:#94a3b8; font-size:10px;" title="Terakhir diupdate">{{ $soal->updated_at->diffForHumans() }}</small>
+                                </div>
+                            @else
+                                <span style="color:#cbd5e1; font-size:13px;">—</span>
+                            @endif
+                        </td>
                         <td style="text-align:center; font-weight:700;">{{ $soal->bobot_nilai }}</td>
                         <td style="font-size:12px; color:#64748b;">{{ $soal->guru->nama ?? '-' }}</td>
                         <td><span class="badge-ios {{ $soal->status == 'aktif' ? 'success' : 'secondary' }}">{{ ucfirst($soal->status) }}</span></td>
@@ -287,8 +317,11 @@ const soalData = <?php
             'tipe_soal' => $s->tipe_soal,
             'bobot_nilai' => $s->bobot_nilai,
             'guru' => $s->guru->nama ?? '-',
+            'gambar_soal' => $s->gambar_soal ? asset('storage/' . $s->gambar_soal) : null,
+            'updated_at' => $s->updated_at->diffForHumans(),
             'opsi' => $s->opsiJawabans->map(fn($o) => [
                 'label' => $o->opsi_label, 'isi' => $o->isi_opsi, 'correct' => $o->is_correct,
+                'gambar' => $o->gambar_opsi ? asset('storage/' . $o->gambar_opsi) : null,
             ])->values()->toArray(),
         ];
     }
@@ -302,14 +335,22 @@ function showDetail(id) {
         opsiHtml = '<div style="margin-top:16px;"><div style="font-weight:700; font-size:13px; color:#334155; margin-bottom:10px;"><i class="bi bi-list-check me-1" style="color:#6366f1;"></i>Opsi Jawaban:</div>';
         soal.opsi.forEach(o => {
             const c = o.correct;
+            const gambarOpsiHtml = o.gambar ? `<img src="${o.gambar}" alt="Gambar opsi ${o.label}" style="width:44px; height:44px; object-fit:cover; border-radius:8px; border:1px solid #e2e8f0; margin-left:8px; cursor:zoom-in;" onclick="window.open('${o.gambar}','_blank')">` : '';
             opsiHtml += `<div style="display:flex; align-items:center; gap:12px; padding:10px 14px; margin-bottom:6px; border-radius:10px; background:${c?'rgba(34,197,94,0.08)':'#f8fafc'}; border:1px solid ${c?'rgba(34,197,94,0.2)':'#e2e8f0'};">
                 <div style="width:30px; height:30px; border-radius:8px; background:${c?'linear-gradient(135deg,#22c55e,#10b981)':'#e2e8f0'}; color:${c?'white':'#64748b'}; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; flex-shrink:0;">${o.label}</div>
-                <div style="font-weight:${c?'600':'400'}; color:${c?'#166534':'#334155'}; font-size:14px;">${o.isi}</div>
-                ${c?'<span class="badge-ios success" style="font-size:10px; margin-left:auto;"><i class="bi bi-check-lg"></i> Benar</span>':''}
+                <div style="font-weight:${c?'600':'400'}; color:${c?'#166534':'#334155'}; font-size:14px; flex-grow:1;">${o.isi}</div>
+                ${gambarOpsiHtml}
+                ${c?'<span class="badge-ios success" style="font-size:10px;"><i class="bi bi-check-lg"></i> Benar</span>':''}
             </div>`;
         });
         opsiHtml += '</div>';
     }
+    const gambarSoalHtml = soal.gambar_soal
+        ? `<div style="margin-top:14px;">
+            <div style="font-weight:700; font-size:13px; color:#334155; margin-bottom:8px;"><i class="bi bi-image-fill me-1" style="color:#d97706;"></i>Gambar Soal:</div>
+            <img src="${soal.gambar_soal}" alt="Gambar soal" style="max-width:100%; max-height:260px; border-radius:12px; border:1px solid #e2e8f0; cursor:zoom-in;" onclick="window.open('${soal.gambar_soal}','_blank')">
+          </div>`
+        : '';
     document.getElementById('detailSoalBody').innerHTML = `
         <div class="row g-3 mb-3">
             <div class="col-6"><div style="font-size:11px; color:#94a3b8; font-weight:600; text-transform:uppercase;">Tipe</div><div style="margin-top:4px;"><span class="badge-ios purple">${soal.tipe_soal.toUpperCase()}</span></div></div>
@@ -318,8 +359,12 @@ function showDetail(id) {
         <hr style="border-color:#f1f5f9;">
         <div style="font-weight:700; font-size:13px; color:#334155; margin-bottom:8px;">Pertanyaan:</div>
         <div style="font-size:15px; color:#0f172a; line-height:1.7; background:#f8fafc; padding:16px; border-radius:12px; border:1px solid #e2e8f0;">${soal.pertanyaan}</div>
+        ${gambarSoalHtml}
         ${opsiHtml}
-        <div style="margin-top:14px; font-size:12px; color:#94a3b8;"><i class="bi bi-person-fill me-1"></i>${soal.guru}</div>`;
+        <div style="margin-top:14px; font-size:12px; color:#94a3b8; display:flex; align-items:center; justify-content:space-between;">
+            <span><i class="bi bi-person-fill me-1"></i>${soal.guru}</span>
+            <span><i class="bi bi-clock-history me-1"></i>Diupdate ${soal.updated_at}</span>
+        </div>`;
     new bootstrap.Modal(document.getElementById('modalDetailSoal')).show();
 }
 </script>
