@@ -145,6 +145,13 @@
                             @else
                                 <span class="badge-ios secondary"><i class="bi bi-dash-circle me-1"></i>Belum</span>
                             @endif
+                            @if($peserta->violation_flag)
+                                <div class="mt-1">
+                                    <span class="badge-ios danger" title="{{ $peserta->violation_detail }} ({{ $peserta->violated_at?->format('d/m/Y H:i') }})">
+                                        <i class="bi bi-shield-exclamation me-1"></i>Pelanggaran
+                                    </span>
+                                </div>
+                            @endif
                         </td>
                         <td style="text-align:center;font-size:12px;">
                             {{ $peserta->waktu_mulai ? $peserta->waktu_mulai->format('H:i:s') : '—' }}
@@ -179,7 +186,7 @@
                             @if(in_array($peserta->status, ['sedang', 'selesai']))
                                 <button type="button" class="btn btn-ios btn-ios-sm btn-ios-warning"
                                         title="Reset peserta (kendala saat ujian)"
-                                        onclick="openResetModal({{ $peserta->id }}, '{{ addslashes($peserta->siswa->nama ?? '-') }}', '{{ $peserta->status }}', {{ $peserta->menjawab_count }})">
+                                        onclick="openResetModal({{ $peserta->id }}, '{{ addslashes($peserta->siswa->nama ?? '-') }}', '{{ $peserta->status }}', {{ $peserta->menjawab_count }}, {{ $peserta->violation_flag ? 'true' : 'false' }})">
                                     <i class="bi bi-arrow-counterclockwise"></i> Reset
                                 </button>
                             @else
@@ -228,6 +235,11 @@
                     Semua jawaban yang sudah tersimpan <strong>tidak akan dihapus</strong> — siswa melanjutkan persis
                     dari posisi terakhir dia mengerjakan. Status dikembalikan ke "Sedang" dan siswa bisa login lagi.
                 </div>
+                <div class="alert alert-danger alert-ios" id="resetViolationNotice" style="font-size:12px;display:none;">
+                    <i class="bi bi-shield-exclamation me-1"></i>
+                    Peserta ini punya alert pelanggaran anti-cheat aktif di dashboard-nya. Reset ini akan sekaligus
+                    membersihkan alert tersebut.
+                </div>
                 <div class="mb-3">
                     <label class="form-label-ios">Sisa Waktu Baru (menit)</label>
                     <input type="number" name="menit" id="resetMenit" class="form-control-ios w-100" min="1" max="{{ $ujian->durasi_menit }}" value="{{ $ujian->durasi_menit }}" required>
@@ -250,12 +262,13 @@
 
 @push('scripts')
 <script>
-function openResetModal(pesertaId, namaSiswa, status, menjawab) {
+function openResetModal(pesertaId, namaSiswa, status, menjawab, adaPelanggaran) {
     document.getElementById('resetForm').action = "{{ url('status-peserta/'.$ujian->id.'/peserta') }}/" + pesertaId + "/reset";
     document.getElementById('resetNamaSiswa').textContent = namaSiswa;
     document.getElementById('resetStatusSekarang').textContent = status === 'selesai' ? 'Selesai' : 'Sedang Mengerjakan';
     document.getElementById('resetMenjawab').textContent = menjawab;
     document.getElementById('resetMenit').value = {{ $ujian->durasi_menit }};
+    document.getElementById('resetViolationNotice').style.display = adaPelanggaran ? 'block' : 'none';
     new bootstrap.Modal(document.getElementById('resetModal')).show();
 }
 </script>

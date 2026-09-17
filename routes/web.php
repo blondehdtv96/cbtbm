@@ -13,6 +13,7 @@ use App\Http\Controllers\ImportSiswaController;
 use App\Http\Controllers\ImportBankSoalController;
 use App\Http\Controllers\KartuPesertaController;
 use App\Http\Controllers\StatusPesertaController;
+use App\Http\Controllers\HasilUjianController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\AntiCheatController;
 use App\Http\Controllers\SoalGambarLibraryController;
@@ -174,6 +175,11 @@ Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
     Route::get('/kartu-peserta/print-by-kelas', [KartuPesertaController::class , 'printByKelas'])->name('kartu-peserta.print-by-kelas');
     Route::get('/kartu-peserta/{ujian}/preview', [KartuPesertaController::class , 'preview'])->name('kartu-peserta.preview');
     Route::get('/kartu-peserta/{ujian}/print', [KartuPesertaController::class , 'print'])->name('kartu-peserta.print');
+});
+
+// Hasil Ujian Routes (Admin only) — menu terpisah untuk download hasil ujian terpusat
+Route::middleware(['auth', 'role:superadmin,admin'])->group(function () {
+    Route::get('/hasil-ujian', [HasilUjianController::class , 'index'])->name('hasil-ujian.index');
 });
 
 // Status Peserta Routes (Admin only)

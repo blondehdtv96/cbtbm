@@ -96,6 +96,7 @@ class DashboardController extends Controller
         $data = [
             'ujianTersedia' => collect(),
             'riwayatUjian' => collect(),
+            'pelanggaranAktif' => collect(),
             'siswa' => $siswa,
             'studentRules' => [
                 'show' => $mustAcceptRules,
@@ -131,6 +132,15 @@ class DashboardController extends Controller
                 ->where('status', 'selesai')
                 ->latest()
                 ->take(10)
+                ->get();
+
+            // Alert pelanggaran anti-cheat: bukan flash session (hilang sekali
+            // reload), tapi persisten dari database, supaya tetap tampil setiap
+            // dashboard dibuka sampai admin reset peserta ujian yang bersangkutan.
+            $data['pelanggaranAktif'] = PesertaUjian::with('ujian')
+                ->where('siswa_id', $siswa->id)
+                ->where('violation_flag', true)
+                ->latest('violated_at')
                 ->get();
         }
 

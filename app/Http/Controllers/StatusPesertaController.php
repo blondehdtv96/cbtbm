@@ -122,12 +122,20 @@ class StatusPesertaController extends Controller
         $peserta->load('siswa');
         $statusSebelumnya = $peserta->status;
         $menitBaru = (int) $request->menit;
+        $adaPelanggaran = $peserta->violation_flag;
 
         $peserta->update([
             'status' => 'sedang',
             'waktu_mulai' => now()->subMinutes($ujian->durasi_menit - $menitBaru),
             'waktu_selesai' => null,
             'nilai' => null,
+            // Reset ini juga jadi satu-satunya cara alert pelanggaran anti-cheat
+            // di dashboard siswa hilang (lihat ExamController::antiCheatViolation).
+            // Jawaban yang sudah tersimpan (jawaban_siswas) tidak ikut disentuh.
+            'violation_flag' => false,
+            'violation_type' => null,
+            'violation_detail' => null,
+            'violated_at' => null,
         ]);
 
         $jumlahTerjawab = JawabanSiswa::where('peserta_ujian_id', $peserta->id)
@@ -136,12 +144,13 @@ class StatusPesertaController extends Controller
             ->count();
 
         ActivityLog::log('reset_peserta', 'ujian', sprintf(
-            'Reset peserta ujian "%s" pada %s (status sebelumnya: %s → sedang, sisa waktu baru: %d menit, %d jawaban tersimpan dipertahankan)%s',
+            'Reset peserta ujian "%s" pada %s (status sebelumnya: %s → sedang, sisa waktu baru: %d menit, %d jawaban tersimpan dipertahankan%s)%s',
             $peserta->siswa->nama ?? '-',
             $ujian->nama_ujian,
             $statusSebelumnya,
             $menitBaru,
             $jumlahTerjawab,
+            $adaPelanggaran ? ', alert pelanggaran anti-cheat dibersihkan' : '',
             $request->filled('catatan') ? '. Catatan: '.$request->catatan : ''
         ), [
             'peserta_ujian_id' => $peserta->id,
@@ -149,9 +158,15 @@ class StatusPesertaController extends Controller
             'status_sebelumnya' => $statusSebelumnya,
             'menit_baru' => $menitBaru,
             'jawaban_dipertahankan' => $jumlahTerjawab,
+            'pelanggaran_dibersihkan' => $adaPelanggaran,
             'catatan' => $request->catatan,
         ]);
 
-        return back()->with('success', "Peserta {$peserta->siswa->nama} berhasil direset. Semua jawaban yang sudah tersimpan tetap dipertahankan — siswa bisa login kembali dan melanjutkan dengan sisa waktu {$menitBaru} menit.");
+        $successMessage = "Peserta {$peserta->siswa->nama} berhasil direset. Semua jawaban yang sudah tersimpan tetap dipertahankan — siswa bisa login kembali dan melanjutkan dengan sisa waktu {$menitBaru} menit.";
+        if ($adaPelanggaran) {
+            $successMessage .= ' Alert pelanggaran anti-cheat di dashboard siswa juga sudah dibersihkan.';
+        }
+
+        return back()->with('success', $successMessage);
     }
 }

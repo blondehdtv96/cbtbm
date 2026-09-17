@@ -114,6 +114,10 @@
                         <i class="bi bi-clipboard2-check-fill"></i>
                         <span>Status Peserta</span>
                     </a>
+                    <a href="{{ route('hasil-ujian.index') }}" class="menu-item {{ request()->routeIs('hasil-ujian.*') ? 'active' : '' }}">
+                        <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                        <span>Hasil Ujian</span>
+                    </a>
                     <a href="{{ route('admin.anti-cheat.index') }}" class="menu-item {{ request()->routeIs('admin.anti-cheat.*') ? 'active' : '' }}">
                         <i class="bi bi-shield-exclamation"></i>
                         <span>Anti-Cheat Log</span>
@@ -200,6 +204,10 @@
                     <a href="{{ route('status-peserta.index') }}" class="menu-item {{ request()->routeIs('status-peserta.*') ? 'active' : '' }}">
                         <i class="bi bi-clipboard2-check-fill"></i>
                         <span>Status Peserta</span>
+                    </a>
+                    <a href="{{ route('hasil-ujian.index') }}" class="menu-item {{ request()->routeIs('hasil-ujian.*') ? 'active' : '' }}">
+                        <i class="bi bi-file-earmark-bar-graph-fill"></i>
+                        <span>Hasil Ujian</span>
                     </a>
                     <a href="{{ route('admin.anti-cheat.index') }}" class="menu-item {{ request()->routeIs('admin.anti-cheat.*') ? 'active' : '' }}">
                         <i class="bi bi-shield-exclamation"></i>

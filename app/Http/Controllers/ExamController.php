@@ -574,7 +574,13 @@ class ExamController extends Controller
     {
         try {
             $siswa = auth()->user()->siswa ?? null;
-            
+            $violationType = $request->violation_type;
+
+            // Siswa TIDAK di-logout ke halaman login. Jawaban dikumpulkan
+            // otomatis, lalu peserta ditandai "violation_flag" di database
+            // (bukan sekadar flash session) supaya alert pelanggaran tetap
+            // muncul di dashboard siswa setiap kali dibuka, sampai admin
+            // me-reset peserta ujian ini (lihat StatusPesertaController::resetPeserta).
             if ($siswa) {
                 $peserta = PesertaUjian::where('ujian_id', $ujian->id)
                     ->where('siswa_id', $siswa->id)
@@ -584,36 +590,34 @@ class ExamController extends Controller
                 if ($peserta) {
                     // Log violation
                     ActivityLog::log('cheat_detected', 'ujian',
-                        "Pelanggaran anti-cheat: {$request->violation_type} - {$request->detail}",
+                        "Pelanggaran anti-cheat: {$violationType} - {$request->detail}",
                         [
                             'siswa_nama' => $siswa->nama,
                             'siswa_nisn' => $siswa->nisn,
                             'ujian_nama' => $ujian->nama_ujian,
                             'kelas' => $siswa->kelas->nama_kelas ?? '-',
-                            'violation_type' => $request->violation_type,
+                            'violation_type' => $violationType,
                             'detail' => $request->detail,
                         ]);
 
                     // Submit exam automatically
                     $this->submitExam($ujian, $peserta);
+
+                    $peserta->update([
+                        'violation_flag' => true,
+                        'violation_type' => $violationType,
+                        'violation_detail' => $request->detail,
+                        'violated_at' => now(),
+                    ]);
                 }
             }
 
-            // Logout user
-            if (auth()->check()) {
-                auth()->logout();
-            }
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            return redirect()->route('siswa.dashboard');
 
-            // Show violation page
-            return view('exam.anti-cheat-violation');
-            
         } catch (\Exception $e) {
             \Log::error('Anti-cheat violation error: ' . $e->getMessage());
-            
-            // Fallback to login with message
-            return redirect()->route('login')->with('error', 'Anda telah di-logout karena terdeteksi melakukan kecurangan.');
+
+            return redirect()->route('siswa.dashboard')->with('error', 'Terjadi kesalahan saat memproses pelanggaran anti-cheat. Silakan hubungi pengawas.');
         }
     }
 }

@@ -11,6 +11,29 @@
 @section('content')
 <div class="student-dashboard fade-in">
 
+    @if($pelanggaranAktif->count() > 0)
+    <div class="sd-violation-alert" role="alert">
+        @foreach($pelanggaranAktif as $pelanggaran)
+        <div class="sd-violation-item">
+            <i class="bi bi-shield-exclamation"></i>
+            <div>
+                <p class="sd-violation-title">Pelanggaran Anti-Cheat Terdeteksi</p>
+                <p class="sd-violation-body">
+                    Ujian <strong>{{ $pelanggaran->ujian->nama_ujian ?? '-' }}</strong> dihentikan otomatis pada
+                    {{ $pelanggaran->violated_at?->format('d M Y, H:i') }}.<br>
+                    Pelanggaran: {{ $pelanggaran->violation_detail }}
+                </p>
+                <p class="sd-violation-note">
+                    <i class="bi bi-info-circle"></i>
+                    Alert ini akan terus muncul sampai dibersihkan oleh admin/pengawas. Jawaban yang sudah Anda
+                    kerjakan tetap tersimpan.
+                </p>
+            </div>
+        </div>
+        @endforeach
+    </div>
+    @endif
+
     @if($siswa)
     @php
         $nilaiVisible = $riwayatUjian->filter(fn($r) => $r->ujian && $r->ujian->tampilkan_nilai);

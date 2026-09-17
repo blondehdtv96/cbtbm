@@ -1624,10 +1624,10 @@
                     ? 'Developer Tools terdeteksi saat ujian berlangsung.'
                     : 'Anda terdeteksi meninggalkan tab atau browser ujian.';
 
-                showAlert(`${finalMessage}\n\nBatas pelanggaran (${maxTabSwitch} kali) telah tercapai. Jawaban akan dikumpulkan otomatis dan akun akan dikeluarkan.`, {
+                showAlert(`${finalMessage}\n\nBatas pelanggaran (${maxTabSwitch} kali) telah tercapai. Jawaban akan dikumpulkan otomatis dan Anda akan diarahkan ke dashboard.`, {
                     title: 'Ujian Dihentikan oleh Anti-Cheat',
                     type: 'danger',
-                    okText: 'Kumpulkan & Keluar',
+                    okText: 'Kumpulkan & Kembali',
                 }).then(() => submitAntiCheatViolation(type, detail));
 
                 violationAutoSubmitTimer = setTimeout(
@@ -1647,6 +1647,27 @@
                 type: 'danger',
                 okText: 'Saya Mengerti',
             });
+        }
+
+        // Pelanggaran "kritis" (split-screen, layar mengambang, pop-up view) tidak
+        // diberi toleransi seperti tab_switch — begitu terdeteksi, jawaban langsung
+        // dikumpulkan dan siswa diarahkan ke dashboard (lihat ExamController::antiCheatViolation).
+        function registerCriticalViolation(type, detail) {
+            if (cheatDetected || violationSubmitting) return;
+            cheatDetected = true;
+            clearTimeout(hiddenTimer);
+            clearInterval(devToolsCheck);
+
+            showAlert(`${detail}.\n\nUjian akan dikumpulkan otomatis dan Anda akan diarahkan ke dashboard.`, {
+                title: 'Pelanggaran Terdeteksi',
+                type: 'danger',
+                okText: 'Mengerti',
+            }).then(() => submitAntiCheatViolation(type, detail));
+
+            violationAutoSubmitTimer = setTimeout(
+                () => submitAntiCheatViolation(type, detail),
+                10000
+            );
         }
 
         if (antiCheatEnabled) {
@@ -1692,6 +1713,73 @@
                     devToolsWarned = false;
                 }
             }, 1000);
+
+            // ─── Deteksi split-screen / layar mengambang / pop-up view (khusus HP) ───
+            // Browser tidak punya API langsung untuk baca mode ini. Cara paling
+            // reliable: kalau viewport tiba-tiba menyusut signifikan (bukan karena
+            // rotasi device) berarti ada jendela lain (split-screen, floating
+            // window, atau pop-up view dari app lain) yang menutupi sebagian layar.
+            // Dilewati saat sedang mengetik jawaban essay supaya keyboard HP yang
+            // memperkecil viewport tidak dianggap pelanggaran.
+            let baselineInnerWidth = window.innerWidth;
+            let baselineInnerHeight = window.innerHeight;
+            let baselineOrientation = baselineInnerWidth > baselineInnerHeight ? 'landscape' : 'portrait';
+            let multiWindowTimer = null;
+            let multiWindowWarned = false;
+
+            function isTypingElementFocused() {
+                const el = document.activeElement;
+                if (!el) return false;
+                return el.tagName === 'TEXTAREA' || el.tagName === 'INPUT' || el.isContentEditable;
+            }
+
+            function resetViewportBaseline() {
+                baselineInnerWidth = window.innerWidth;
+                baselineInnerHeight = window.innerHeight;
+                baselineOrientation = baselineInnerWidth > baselineInnerHeight ? 'landscape' : 'portrait';
+            }
+
+            function checkMultiWindow() {
+                if (cheatDetected || violationSubmitting || window.AppPopup?.isOpen()) return;
+                if (isTypingElementFocused()) { clearTimeout(multiWindowTimer); return; }
+
+                const currentOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+                if (currentOrientation !== baselineOrientation) {
+                    // Rotasi device yang sah, bukan pelanggaran.
+                    clearTimeout(multiWindowTimer);
+                    resetViewportBaseline();
+                    return;
+                }
+
+                const widthRatio = window.innerWidth / baselineInnerWidth;
+                const heightRatio = window.innerHeight / baselineInnerHeight;
+                const shrinkThreshold = 0.75;
+
+                if (widthRatio < shrinkThreshold || heightRatio < shrinkThreshold) {
+                    if (multiWindowTimer) return;
+                    multiWindowTimer = setTimeout(function() {
+                        multiWindowTimer = null;
+                        if (isTypingElementFocused() || cheatDetected || violationSubmitting) return;
+                        if (!multiWindowWarned) {
+                            multiWindowWarned = true;
+                            registerCriticalViolation('multi_window', 'Tampilan ujian terdeteksi menyusut mendadak (kemungkinan split-screen, layar mengambang, atau pop-up view aktif)');
+                        }
+                    }, hiddenGraceMs);
+                } else {
+                    clearTimeout(multiWindowTimer);
+                    multiWindowTimer = null;
+                    if (widthRatio > 0.98 && heightRatio > 0.98) {
+                        multiWindowWarned = false;
+                        resetViewportBaseline();
+                    }
+                }
+            }
+
+            window.addEventListener('resize', checkMultiWindow);
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', checkMultiWindow);
+            }
+            setInterval(checkMultiWindow, 1500);
         }
 
         window.addEventListener('beforeunload', function() {

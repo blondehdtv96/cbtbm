@@ -12,12 +12,15 @@ class PesertaUjian extends Model
     protected $fillable = [
         'ujian_id', 'siswa_id', 'waktu_mulai', 'waktu_selesai',
         'nilai', 'status', 'soal_order',
+        'violation_flag', 'violation_type', 'violation_detail', 'violated_at',
     ];
 
     protected $casts = [
         'waktu_mulai' => 'datetime',
         'waktu_selesai' => 'datetime',
         'nilai' => 'decimal:2',
+        'violation_flag' => 'boolean',
+        'violated_at' => 'datetime',
     ];
 
     public function ujian()
