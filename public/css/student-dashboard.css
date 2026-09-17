@@ -118,34 +118,112 @@
 }
 
 /* ---------- Persistent anti-cheat violation alert ---------- */
-.sd-violation-alert {
+.sd-violation-stack {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-bottom: 24px;
-}
-
-.sd-violation-item {
-    display: flex;
     gap: 14px;
-    align-items: flex-start;
-    padding: 18px 20px;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%);
-    box-shadow: 0 14px 32px -10px rgba(220, 38, 38, 0.5);
-    color: #fff;
+    margin-bottom: 26px;
 }
 
-.sd-violation-item > i {
-    font-size: 24px;
+.sd-violation-card {
+    position: relative;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 20px 22px;
+    border-radius: 22px;
+    overflow: hidden;
+    background: linear-gradient(150deg, #EF4444 0%, #DC2626 42%, #991B1B 100%);
+    box-shadow: 0 16px 36px -12px rgba(220, 38, 38, 0.5), 0 2px 0 rgba(255, 255, 255, 0.15) inset;
+    color: #fff;
+    opacity: 0;
+    animation: sdViolationIn 0.5s cubic-bezier(.2, .8, .2, 1) forwards;
+    animation-delay: var(--sd-vc-delay, 0ms);
+}
+
+.sd-violation-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.06) 0 10px,
+        transparent 10px 20px
+    );
+    pointer-events: none;
+}
+
+.sd-violation-icon {
+    position: relative;
     flex-shrink: 0;
-    margin-top: 1px;
+    width: 46px;
+    height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(6px);
+    z-index: 1;
+}
+
+.sd-violation-icon i {
+    font-size: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.sd-violation-ring {
+    position: absolute;
+    inset: -6px;
+    border-radius: 18px;
+    border: 2px solid rgba(255, 255, 255, 0.55);
+    animation: sdViolationPulse 2.2s ease-out infinite;
+}
+
+.sd-violation-content {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    min-width: 0;
+}
+
+.sd-violation-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.sd-violation-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.22);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.sd-violation-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .sd-violation-title {
-    margin: 0 0 4px;
+    margin: 0 0 6px;
     font-weight: 800;
-    font-size: 14px;
+    font-size: 15px;
+    line-height: 1.35;
 }
 
 .sd-violation-body {
@@ -155,15 +233,38 @@
     color: rgba(255, 255, 255, 0.92);
 }
 
-.sd-violation-note {
-    margin: 8px 0 0;
-    padding-top: 8px;
-    border-top: 1px solid rgba(255, 255, 255, 0.25);
-    font-size: 11.5px;
-    color: rgba(255, 255, 255, 0.85);
+.sd-violation-footer {
     display: flex;
     align-items: center;
     gap: 6px;
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.15);
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+}
+
+@keyframes sdViolationIn {
+    from { opacity: 0; transform: translateY(-10px) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes sdViolationPulse {
+    0% { opacity: 0.7; transform: scale(0.9); }
+    70% { opacity: 0; transform: scale(1.18); }
+    100% { opacity: 0; transform: scale(1.18); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sd-violation-card { animation: none; opacity: 1; }
+    .sd-violation-ring { animation: none; display: none; }
+}
+
+@media (max-width: 480px) {
+    .sd-violation-card { flex-direction: column; padding: 18px; }
+    .sd-violation-head { gap: 6px; }
 }
 
 /* ---------- Section headings ---------- */

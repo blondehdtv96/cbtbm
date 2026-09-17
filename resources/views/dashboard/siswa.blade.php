@@ -12,22 +12,27 @@
 <div class="student-dashboard fade-in">
 
     @if($pelanggaranAktif->count() > 0)
-    <div class="sd-violation-alert" role="alert">
-        @foreach($pelanggaranAktif as $pelanggaran)
-        <div class="sd-violation-item">
-            <i class="bi bi-shield-exclamation"></i>
-            <div>
-                <p class="sd-violation-title">Pelanggaran Anti-Cheat Terdeteksi</p>
-                <p class="sd-violation-body">
-                    Ujian <strong>{{ $pelanggaran->ujian->nama_ujian ?? '-' }}</strong> dihentikan otomatis pada
-                    {{ $pelanggaran->violated_at?->format('d M Y, H:i') }}.<br>
-                    Pelanggaran: {{ $pelanggaran->violation_detail }}
-                </p>
-                <p class="sd-violation-note">
-                    <i class="bi bi-info-circle"></i>
-                    Alert ini akan terus muncul sampai dibersihkan oleh admin/pengawas. Jawaban yang sudah Anda
-                    kerjakan tetap tersimpan.
-                </p>
+    <div class="sd-violation-stack" role="alert">
+        @foreach($pelanggaranAktif as $i => $pelanggaran)
+        <div class="sd-violation-card" style="--sd-vc-delay: {{ $i * 90 }}ms;">
+            <div class="sd-violation-icon">
+                <span class="sd-violation-ring"></span>
+                <i class="bi bi-shield-exclamation"></i>
+            </div>
+            <div class="sd-violation-content">
+                <div class="sd-violation-head">
+                    <span class="sd-violation-tag">Pelanggaran Anti-Cheat</span>
+                    <span class="sd-violation-time">
+                        <i class="bi bi-clock-history"></i>
+                        {{ $pelanggaran->violated_at?->format('d M Y, H:i') }}
+                    </span>
+                </div>
+                <p class="sd-violation-title">{{ $pelanggaran->ujian->nama_ujian ?? 'Ujian' }} dihentikan otomatis</p>
+                <p class="sd-violation-body">{{ $pelanggaran->violation_detail }}</p>
+                <div class="sd-violation-footer">
+                    <i class="bi bi-lock-fill"></i>
+                    Menunggu peninjauan admin/pengawas &bull; jawaban Anda tetap tersimpan aman
+                </div>
             </div>
         </div>
         @endforeach
