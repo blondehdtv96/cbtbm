@@ -246,5 +246,6 @@
             }
         }, 1000);
     </script>
+    <x-app-loading />
 </body>
 </html>

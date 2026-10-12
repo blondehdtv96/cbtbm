@@ -618,5 +618,6 @@
             }
         }
     </script>
+    <x-app-loading />
 </body>
 </html>

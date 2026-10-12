@@ -755,14 +755,15 @@
     </div>
 
     <x-app-popup :flash="false" />
+    <x-app-loading />
 
     <!-- Submit Form -->
-    <form id="submitForm" method="POST" action="{{ route('exam.submit', $ujian) }}" style="display: none;">
+    <form id="submitForm" method="POST" action="{{ route('exam.submit', $ujian) }}" style="display: none;" data-loading="Mengumpulkan jawaban...">
         @csrf
     </form>
 
     <!-- Anti-Cheat Form (real form POST for reliable logout + logging) -->
-    <form id="antiCheatForm" method="POST" action="{{ route('exam.anti-cheat', $ujian) }}" style="display: none;">
+    <form id="antiCheatForm" method="POST" action="{{ route('exam.anti-cheat', $ujian) }}" style="display: none;" data-loading="Memproses pelanggaran...">
         @csrf
         <input type="hidden" id="violationTypeInput" name="violation_type" value="tab_switch">
         <input type="hidden" id="violationDetailInput" name="detail" value="Siswa berpindah tab atau membuka aplikasi/browser lain">
@@ -1463,8 +1464,17 @@
             msg += '\n\nYakin ingin mengumpulkan jawaban?';
 
             if (await showConfirm(msg, { title: 'Kumpulkan Jawaban', type: unanswered > 0 ? 'warning' : 'info', okText: 'Ya, Kumpulkan' })) {
+                // Loading tampil sejak penyimpanan terakhir sampai halaman hasil terbuka,
+                // sekaligus memblokir klik "Kumpulkan" kedua yang membuat server bekerja dua kali.
+                AppLoading.show('Mengumpulkan jawaban...', { immediate: true });
                 // Pastikan semua jawaban tersimpan sebelum submit
-                await saveAllAnswers();
+                try {
+                    await saveAllAnswers();
+                }
+                catch (error) {
+                    AppLoading.forceHide();
+                    throw error;
+                }
                 // Tunggu sebentar untuk memastikan request selesai
                 setTimeout(() => {
                     document.getElementById('submitForm').submit();

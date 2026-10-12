@@ -124,6 +124,9 @@ Route::middleware(['auth', 'role:superadmin,admin'])->prefix('admin')->name('adm
 
     // Anti-Cheat Log
     Route::get('/anti-cheat', [AntiCheatController::class , 'index'])->name('anti-cheat.index');
+    Route::delete('/anti-cheat/bulk-destroy', [AntiCheatController::class , 'bulkDestroy'])->name('anti-cheat.bulk-destroy');
+    Route::delete('/anti-cheat/clear', [AntiCheatController::class , 'clear'])->name('anti-cheat.clear');
+    Route::delete('/anti-cheat/{log}', [AntiCheatController::class , 'destroy'])->name('anti-cheat.destroy');
 
     // Monitoring Penggunaan Aplikasi
     Route::get('/monitoring', [App\Http\Controllers\MonitoringController::class, 'index'])->name('monitoring.index');
