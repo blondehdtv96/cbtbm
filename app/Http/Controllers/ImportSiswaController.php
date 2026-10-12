@@ -99,7 +99,7 @@ class ImportSiswaController extends Controller
             ['No', 'Nomor urut (opsional)'],
             ['NISN', 'Nomor Induk Siswa Nasional (wajib, unik, digunakan untuk login)'],
             ['NIS', 'Nomor Induk Siswa internal sekolah (wajib, unik)'],
-            ['Nama Lengkap', 'Nama lengkap siswa (wajib)'],
+            ['Nama Lengkap', 'Nama lengkap siswa (wajib, boleh sama dengan siswa lain)'],
             ['Kelas', 'Nama kelas (misal: 10 TKJ) atau ID kelas dari sistem (wajib)'],
             ['Password', 'Password login siswa (opsional). Kosongkan bila ingin di-generate otomatis'],
             ['', ''],
@@ -108,7 +108,8 @@ class ImportSiswaController extends Controller
             ['2.', 'Jika kolom Password dikosongkan, sistem akan generate password otomatis'],
             ['3.', 'Password boleh sama untuk beberapa siswa (misal satu password per kelas)'],
             ['4.', 'Email akan di-generate otomatis dari NISN'],
-            ['5.', 'NISN dan NIS harus unik (tidak boleh duplikat)'],
+            ['5.', 'Hanya NISN dan NIS yang harus unik (tidak boleh duplikat)'],
+            ['', 'Nama siswa kembar/sama TIDAK dianggap duplikat selama NIS dan NISN berbeda'],
             ['6.', 'Nama kelas harus sesuai dengan yang ada di sistem'],
             ['7.', 'File harus berformat .xlsx atau .xls'],
         ];
@@ -190,16 +191,16 @@ class ImportSiswaController extends Controller
             return strtolower(trim($k->nama_kelas));
         });
 
-        // Existing NISN/NIS/Nama for duplicate checking
+        // Existing NISN/NIS for duplicate checking.
+        // Nama sengaja TIDAK diperiksa: siswa dengan nama sama boleh diimport
+        // selama NIS (dan NISN) berbeda.
         $existingNisn = Siswa::pluck('nisn')->filter()->toArray();
         $existingNis = Siswa::pluck('nis')->toArray();
-        $existingNama = Siswa::pluck('nama')->map(fn($n) => strtolower(trim($n)))->toArray();
 
         $previewData = [];
         $errors = [];
         $nisnSeen = [];
         $nisSeen = [];
-        $namaSeen = [];
 
         foreach ($rows as $rowIdx => $row) {
             $rowNum = $rowIdx + 1;
@@ -241,18 +242,10 @@ class ImportSiswaController extends Controller
             }
             $nisSeen[] = $nis;
 
-            // Validate Nama
-            $namaKey = strtolower($nama);
+            // Validate Nama — hanya wajib terisi, nama kembar bukan masalah
             if (empty($nama)) {
                 $rowErrors[] = 'Nama kosong';
             }
-            elseif (in_array($namaKey, $existingNama)) {
-                $rowErrors[] = "Nama '{$nama}' sudah ada di sistem";
-            }
-            elseif (in_array($namaKey, $namaSeen)) {
-                $rowErrors[] = "Nama '{$nama}' duplikat dalam file";
-            }
-            $namaSeen[] = $namaKey;
 
             // Resolve kelas
             $resolvedKelas = null;
