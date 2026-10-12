@@ -606,6 +606,8 @@ class ImportBankSoalController extends Controller
         // Setiap baris diproses dalam transaksi sendiri: kalau satu baris gagal
         // (mis. relasi mapel hilang di tengah proses), baris-baris lain yang
         // sudah berhasil TIDAK ikut di-rollback — hanya baris itu yang dicatat gagal.
+        // Argumen kedua DB::transaction() membuat baris yang jadi korban deadlock
+        // dicoba ulang dulu, bukan langsung dicatat gagal.
         foreach ($validRows as $row) {
             try {
                 DB::transaction(function () use ($row, $guru, &$importedSoals) {
@@ -638,7 +640,7 @@ class ImportBankSoalController extends Controller
                         'tipe_soal' => $row['tipe_soal'],
                         'mapel' => $row['mapel']->nama_mapel,
                     ];
-                });
+                }, self::TRANSACTION_ATTEMPTS);
 
                 $successCount++;
             } catch (\Throwable $e) {

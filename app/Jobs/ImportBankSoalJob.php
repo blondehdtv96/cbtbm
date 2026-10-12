@@ -17,6 +17,9 @@ use Illuminate\Support\Str;
 
 class ImportBankSoalJob implements ShouldQueue
 {
+    /** Percobaan ulang transaksi per baris kalau MySQL melaporkan deadlock */
+    private const TRANSACTION_ATTEMPTS = 5;
+
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $tries = 1;
@@ -45,6 +48,8 @@ class ImportBankSoalJob implements ShouldQueue
 
         // Setiap baris diproses dalam transaksi sendiri: satu baris gagal tidak
         // boleh me-rollback baris lain yang sudah berhasil disimpan sebelumnya.
+        // Argumen kedua DB::transaction() membuat baris yang jadi korban deadlock
+        // dicoba ulang dulu, bukan langsung dicatat gagal.
         foreach ($this->rows as $row) {
             try {
                 DB::transaction(function () use ($row, &$importedSoals) {
@@ -76,7 +81,7 @@ class ImportBankSoalJob implements ShouldQueue
                         'tipe_soal' => $row['tipe_soal'],
                         'mapel' => $row['mapel']->nama_mapel,
                     ];
-                });
+                }, self::TRANSACTION_ATTEMPTS);
 
                 $successCount++;
             } catch (\Throwable $e) {

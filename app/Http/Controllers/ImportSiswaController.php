@@ -18,6 +18,9 @@ class ImportSiswaController extends Controller
     private const PASSWORD_MIN_LENGTH = 4;
     private const PASSWORD_MAX_LENGTH = 50;
 
+    /** Jumlah baris per statement insert massal */
+    private const INSERT_CHUNK = 100;
+
     /**
      * Show the import siswa page
      */
@@ -332,66 +335,103 @@ class ImportSiswaController extends Controller
                 ->with('error', 'Tidak ada data valid untuk diimport.');
         }
 
+        // Hash bcrypt ratusan siswa bisa memakan menit-an waktu CPU — beri ruang
+        // seperti proses backup database (lihat DatabaseBackupService).
+        @set_time_limit(300);
+
+        // Semua pekerjaan berat disiapkan DI LUAR transaksi. Satu Hash::make()
+        // (bcrypt 12 putaran) butuh ratusan milidetik, jadi menghash di dalam
+        // transaksi menahan lock tabel users belasan sampai puluhan detik untuk
+        // ratusan siswa. Request lain yang menulis users (siswa login, stempel
+        // last_seen) ikut mengantre sampai MySQL membunuh salah satunya dengan
+        // "Deadlock found when trying to get lock".
+        $timestamp = now();
+        $userRows = [];
+        $siswaRows = [];
         $credentials = [];
-        $successCount = 0;
 
-        DB::beginTransaction();
+        foreach ($validRows as $row) {
+            $manualPassword = trim((string) ($row['password'] ?? ''));
+            $isManualPassword = $manualPassword !== '';
+            $plainPassword = $isManualPassword ? $manualPassword : strtoupper(Str::random(8));
+            $autoEmail = 'siswa.' . $row['nisn'] . '@cbtsmk.local';
+
+            // Dikunci per email (unik per NISN) supaya baris kembar tidak
+            // menabrak unique index di tengah transaksi.
+            $userRows[$autoEmail] = [
+                'name' => $row['nama'],
+                'email' => $autoEmail,
+                'password' => Hash::make($plainPassword),
+                'plain_password' => $plainPassword,
+                'role' => 'siswa',
+                'is_active' => true,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+
+            $siswaRows[$autoEmail] = [
+                'nis' => $row['nis'],
+                'nisn' => $row['nisn'],
+                'nama' => $row['nama'],
+                'kelas_id' => $row['kelas']->id,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp,
+            ];
+
+            $credentials[$autoEmail] = [
+                'nama' => $row['nama'],
+                'nisn' => $row['nisn'],
+                'nis' => $row['nis'],
+                'kelas' => $row['kelas']->nama_kelas,
+                'password' => $plainPassword,
+                'password_manual' => $isManualPassword,
+            ];
+        }
+
+        $successCount = count($userRows);
+
         try {
-            foreach ($validRows as $row) {
-                $manualPassword = trim((string) ($row['password'] ?? ''));
-                $isManualPassword = $manualPassword !== '';
-                $plainPassword = $isManualPassword ? $manualPassword : strtoupper(Str::random(8));
-                $autoEmail = 'siswa.' . $row['nisn'] . '@cbtsmk.local';
+            // Transaksi kini tinggal beberapa statement insert massal. Attempts > 1
+            // membuat Laravel otomatis mencoba ulang kalau transaksi ini yang
+            // dipilih MySQL sebagai korban deadlock / lock wait timeout.
+            DB::transaction(function () use ($userRows, $siswaRows) {
+                foreach (array_chunk($userRows, self::INSERT_CHUNK, true) as $chunk) {
+                    User::insert(array_values($chunk));
 
-                $user = User::create([
-                    'name' => $row['nama'],
-                    'email' => $autoEmail,
-                    'password' => Hash::make($plainPassword),
-                    'plain_password' => $plainPassword,
-                    'role' => 'siswa',
-                    'is_active' => true,
-                ]);
+                    // insert() massal tidak mengembalikan id, jadi id akun diambil
+                    // lewat email yang memang unik per NISN.
+                    $userIds = User::whereIn('email', array_keys($chunk))->pluck('id', 'email');
 
-                Siswa::create([
-                    'nis' => $row['nis'],
-                    'nisn' => $row['nisn'],
-                    'nama' => $row['nama'],
-                    'kelas_id' => $row['kelas']->id,
-                    'user_id' => $user->id,
-                ]);
+                    if ($userIds->count() !== count($chunk)) {
+                        throw new \RuntimeException('Sebagian akun siswa gagal dibuat, import dibatalkan.');
+                    }
 
-                $credentials[] = [
-                    'nama' => $row['nama'],
-                    'nisn' => $row['nisn'],
-                    'nis' => $row['nis'],
-                    'kelas' => $row['kelas']->nama_kelas,
-                    'password' => $plainPassword,
-                    'password_manual' => $isManualPassword,
-                ];
+                    $batch = [];
+                    foreach (array_keys($chunk) as $email) {
+                        $batch[] = $siswaRows[$email] + ['user_id' => $userIds[$email]];
+                    }
 
-                $successCount++;
-            }
-
-            DB::commit();
-
-            ActivityLog::log('import', 'siswa', "Import {$successCount} siswa dari file Excel");
-
-            // Store credentials in session for display
-            session(['import_credentials' => $credentials]);
-            session(['import_success_count' => $successCount]);
-
-            // Clear preview
-            session()->forget(['import_preview', 'import_file_name']);
-
-            return redirect()->route('admin.import-siswa.result');
-
+                    Siswa::insert($batch);
+                }
+            }, self::TRANSACTION_ATTEMPTS);
         }
-        catch (\Exception $e) {
-            DB::rollback();
+        catch (\Throwable $e) {
             return redirect()->route('admin.import-siswa.index')
-                ->with('error', 'Gagal import data: ' . $e->getMessage());
+                ->with('error', $this->writeErrorMessage($e, 'Gagal import data'));
         }
+
+        ActivityLog::log('import', 'siswa', "Import {$successCount} siswa dari file Excel");
+
+        // Store credentials in session for display
+        session(['import_credentials' => array_values($credentials)]);
+        session(['import_success_count' => $successCount]);
+
+        // Clear preview
+        session()->forget(['import_preview', 'import_file_name']);
+
+        return redirect()->route('admin.import-siswa.result');
     }
+
 
     /**
      * Show import result with all generated credentials

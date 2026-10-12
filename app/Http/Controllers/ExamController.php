@@ -439,7 +439,8 @@ class ExamController extends Controller
      * Wrapped in a transaction and grades are written with a handful of grouped
      * bulk UPDATEs instead of one UPDATE per jawaban — matters when many siswa
      * submit near-simultaneously (e.g. the exam timer running out for everyone
-     * who started together).
+     * who started together). That same burst can make MySQL pick one submission
+     * as a deadlock victim, so the transaction is retried instead of failing.
      */
     protected function submitExam(Ujian $ujian, PesertaUjian $peserta)
     {
@@ -512,7 +513,14 @@ class ExamController extends Controller
                 JawabanSiswa::whereIn('id', $essayIds)->update(['is_correct' => null, 'nilai' => 0]);
             }
             if (!empty($soalUsageIds)) {
-                BankSoal::whereIn('id', array_unique($soalUsageIds))->increment('digunakan_count');
+                // Baris bank_soal ini dipakai bersama semua peserta, jadi id-nya
+                // diurutkan dulu: semua transaksi mengunci baris dalam urutan yang
+                // sama sehingga tidak saling menunggu (penyebab klasik deadlock
+                // saat banyak siswa mengumpulkan jawaban di detik yang sama).
+                $usageIds = array_values(array_unique($soalUsageIds));
+                sort($usageIds);
+
+                BankSoal::whereIn('id', $usageIds)->increment('digunakan_count');
             }
 
             // Calculate final score (0-100 scale)
@@ -535,7 +543,7 @@ class ExamController extends Controller
             ]);
 
             return $nilaiAkhir;
-        });
+        }, self::TRANSACTION_ATTEMPTS);
 
         ActivityLog::log('submit_exam', 'ujian', "Menyelesaikan ujian: {$ujian->nama_ujian}, Nilai: {$nilaiAkhir}");
 

@@ -104,38 +104,40 @@ class ManajemenSiswaController extends Controller
 
         $plainPassword = strtoupper(Str::random(8));
         $autoEmail = 'siswa.' . $request->nisn . '@cbtsmk.local';
+        // Hash bcrypt dihitung sebelum transaksi dibuka: operasinya ratusan
+        // milidetik dan tidak ada gunanya menahan lock tabel users selama itu.
+        $hashedPassword = Hash::make($plainPassword);
 
-        DB::beginTransaction();
         try {
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $autoEmail,
-                'password' => Hash::make($plainPassword),
-                'plain_password' => $plainPassword,
-                'role' => 'siswa',
-                'is_active' => true,
-            ]);
+            $user = DB::transaction(function () use ($request, $autoEmail, $hashedPassword, $plainPassword) {
+                $user = User::create([
+                    'name' => $request->name,
+                    'email' => $autoEmail,
+                    'password' => $hashedPassword,
+                    'plain_password' => $plainPassword,
+                    'role' => 'siswa',
+                    'is_active' => true,
+                ]);
 
-            Siswa::create([
-                'nis' => $request->nis,
-                'nisn' => $request->nisn,
-                'nama' => $request->name,
-                'kelas_id' => $request->kelas_id,
-                'user_id' => $user->id,
-            ]);
+                Siswa::create([
+                    'nis' => $request->nis,
+                    'nisn' => $request->nisn,
+                    'nama' => $request->name,
+                    'kelas_id' => $request->kelas_id,
+                    'user_id' => $user->id,
+                ]);
 
-            DB::commit();
-
-            ActivityLog::log('create', 'siswa', "Membuat akun siswa: {$user->name} (NISN: {$request->nisn})");
-
-            return redirect()->route('admin.siswa.credential', $user)
-                ->with('generated_password', $plainPassword);
-
+                return $user;
+            }, self::TRANSACTION_ATTEMPTS);
         }
-        catch (\Exception $e) {
-            DB::rollback();
-            return back()->withInput()->with('error', 'Gagal membuat akun siswa: ' . $e->getMessage());
+        catch (\Throwable $e) {
+            return back()->withInput()->with('error', $this->writeErrorMessage($e, 'Gagal membuat akun siswa'));
         }
+
+        ActivityLog::log('create', 'siswa', "Membuat akun siswa: {$user->name} (NISN: {$request->nisn})");
+
+        return redirect()->route('admin.siswa.credential', $user)
+            ->with('generated_password', $plainPassword);
     }
 
     /**
@@ -208,22 +210,21 @@ class ManajemenSiswaController extends Controller
     {
         $nama = $siswa->nama;
 
-        DB::beginTransaction();
         try {
-            if ($siswa->user) {
-                $siswa->user->delete();
-            }
-            $siswa->delete();
-            DB::commit();
-
-            ActivityLog::log('delete', 'siswa', "Menghapus siswa: {$nama}");
-
-            return redirect()->route('admin.siswa.index')->with('success', "Siswa {$nama} berhasil dihapus!");
+            DB::transaction(function () use ($siswa) {
+                if ($siswa->user) {
+                    $siswa->user->delete();
+                }
+                $siswa->delete();
+            }, self::TRANSACTION_ATTEMPTS);
         }
-        catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Gagal menghapus: ' . $e->getMessage());
+        catch (\Throwable $e) {
+            return back()->with('error', $this->writeErrorMessage($e, 'Gagal menghapus'));
         }
+
+        ActivityLog::log('delete', 'siswa', "Menghapus siswa: {$nama}");
+
+        return redirect()->route('admin.siswa.index')->with('success', "Siswa {$nama} berhasil dihapus!");
     }
 
     /**
@@ -237,29 +238,35 @@ class ManajemenSiswaController extends Controller
             return back()->with('error', 'Tidak ada siswa yang dipilih.');
         }
 
-        $siswas = Siswa::with('user')->whereIn('id', $ids)->get();
-        $count = 0;
+        $siswas = Siswa::whereIn('id', $ids)->get(['id', 'user_id']);
+        $count = $siswas->count();
 
-        DB::beginTransaction();
+        if ($count === 0) {
+            return back()->with('error', 'Data siswa yang dipilih tidak ditemukan.');
+        }
+
+        $siswaIds = $siswas->pluck('id')->all();
+        $userIds = $siswas->pluck('user_id')->filter()->all();
+
         try {
-            foreach ($siswas as $siswa) {
-                if ($siswa->user) {
-                    $siswa->user->delete();
+            // Dua statement set-based, bukan satu delete per baris: transaksi
+            // jauh lebih pendek sehingga tidak bertabrakan dengan tulisan lain
+            // ke tabel users (login siswa, stempel last_seen) yang memicu deadlock.
+            DB::transaction(function () use ($siswaIds, $userIds) {
+                Siswa::whereIn('id', $siswaIds)->delete();
+
+                if (!empty($userIds)) {
+                    User::whereIn('id', $userIds)->delete();
                 }
-                $siswa->delete();
-                $count++;
-            }
-
-            DB::commit();
-
-            ActivityLog::log('delete', 'siswa', "Menghapus {$count} siswa terpilih (bulk delete)");
-
-            return redirect()->route('admin.siswa.index')->with('success', "{$count} siswa berhasil dihapus!");
+            }, self::TRANSACTION_ATTEMPTS);
         }
-        catch (\Exception $e) {
-            DB::rollback();
-            return back()->with('error', 'Gagal menghapus data terpilih: ' . $e->getMessage());
+        catch (\Throwable $e) {
+            return back()->with('error', $this->writeErrorMessage($e, 'Gagal menghapus data terpilih'));
         }
+
+        ActivityLog::log('delete', 'siswa', "Menghapus {$count} siswa terpilih (bulk delete)");
+
+        return redirect()->route('admin.siswa.index')->with('success', "{$count} siswa berhasil dihapus!");
     }
 
     /**
