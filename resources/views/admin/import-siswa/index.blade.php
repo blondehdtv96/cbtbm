@@ -28,7 +28,8 @@
                                 <ul style="font-size: 12px; color: #334155; margin: 0; padding-left: 16px; line-height: 1.8;">
                                     <li>Download template terlebih dahulu, lalu isi data sesuai format</li>
                                     <li>Kolom wajib: <strong>NISN</strong>, <strong>NIS</strong>, <strong>Nama Lengkap</strong>, <strong>Kelas</strong></li>
-                                    <li><strong>Password otomatis</strong> di-generate oleh sistem</li>
+                                    <li>Kolom <strong>Password</strong> boleh diisi manual (min. 4 karakter, tanpa spasi)</li>
+                                    <li>Jika kolom Password <strong>dikosongkan</strong>, sistem generate password otomatis</li>
                                     <li>Siswa login menggunakan <strong>NISN + Password</strong></li>
                                     <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong> (maks. 5MB)</li>
                                 </ul>

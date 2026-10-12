@@ -44,7 +44,7 @@
             </div>
         </div>
         <div class="card-body p-0" style="overflow-x: auto;">
-            <table class="table-ios" style="min-width: 700px;">
+            <table class="table-ios" style="min-width: 820px;">
                 <thead>
                     <tr>
                         <th style="width: 50px;">No</th>
@@ -53,6 +53,7 @@
                         <th>NIS</th>
                         <th>Nama Lengkap</th>
                         <th>Kelas</th>
+                        <th>Password</th>
                         <th>Keterangan</th>
                     </tr>
                 </thead>
@@ -79,6 +80,14 @@
                                 <span class="badge-ios primary">{{ $row['kelas']->nama_kelas }}</span>
                             @else
                                 <span style="color: #ef4444; font-size: 12px;">{{ $row['kelas_input'] ?: '-' }}</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if(!empty($row['password_manual']))
+                                <span style="background: rgba(245, 158, 11, 0.12); color: #b45309; padding: 3px 10px; border-radius: 8px; font-family: monospace; font-weight: 700; font-size: 12px;">{{ $row['password'] }}</span>
+                                <div style="font-size: 10px; color: #92400e; margin-top: 3px;">Manual</div>
+                            @else
+                                <span style="font-size: 11px; color: #64748b;"><i class="bi bi-magic me-1"></i>Otomatis</span>
                             @endif
                         </td>
                         <td>

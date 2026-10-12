@@ -23,7 +23,7 @@
     <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 14px; padding: 14px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 10px;">
         <i class="bi bi-exclamation-triangle-fill" style="color: #f59e0b; font-size: 20px;"></i>
         <div style="font-size: 13px; color: #92400e; font-weight: 500;">
-            <strong>Perhatian:</strong> Password hanya ditampilkan <strong>satu kali</strong>. Pastikan untuk <strong>download file Excel</strong> atau <strong>cetak</strong> data ini. Jika lupa, Anda bisa reset password per siswa dari halaman edit user.
+            <strong>Perhatian:</strong> Password (termasuk yang diisi manual di file import) hanya ditampilkan <strong>satu kali</strong>. Pastikan untuk <strong>download file Excel</strong> atau <strong>cetak</strong> data ini. Jika lupa, Anda bisa reset password per siswa dari halaman edit user.
         </div>
     </div>
 
@@ -75,6 +75,9 @@
                             <span style="background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; padding: 4px 12px; border-radius: 8px; font-weight: 800; font-size: 14px; font-family: monospace; letter-spacing: 2px;">
                                 {{ $cred['password'] }}
                             </span>
+                            <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">
+                                {{ !empty($cred['password_manual']) ? 'Manual (dari file import)' : 'Otomatis' }}
+                            </div>
                         </td>
                     </tr>
                     @endforeach

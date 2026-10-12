@@ -14,6 +14,10 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ImportSiswaController extends Controller
 {
+    /** Batas panjang password manual dari file import */
+    private const PASSWORD_MIN_LENGTH = 4;
+    private const PASSWORD_MAX_LENGTH = 50;
+
     /**
      * Show the import siswa page
      */
@@ -39,7 +43,7 @@ class ImportSiswaController extends Controller
         $sheet->setTitle('Template Import Siswa');
 
         // Headers
-        $headers = ['No', 'NISN', 'NIS', 'Nama Lengkap', 'Kelas (ID atau Nama)'];
+        $headers = ['No', 'NISN', 'NIS', 'Nama Lengkap', 'Kelas (ID atau Nama)', 'Password (Opsional)'];
         foreach ($headers as $col => $header) {
             $cell = chr(65 + $col) . '1';
             $sheet->setCellValue($cell, $header);
@@ -59,18 +63,29 @@ class ImportSiswaController extends Controller
 
         // Sample data
         $sampleData = [
-            [1, '0030000100', '20240100', 'Ahmad Rafi Pratama', '10 TKJ'],
-            [2, '0030000101', '20240101', 'Bella Anisa Putri', '10 TKJ'],
-            [3, '0030000102', '20240102', 'Candra Dwi Saputra', '11 TSM'],
+            [1, '0030000100', '20240100', 'Ahmad Rafi Pratama', '10 TKJ', 'siswa2024'],
+            [2, '0030000101', '20240101', 'Bella Anisa Putri', '10 TKJ', ''],
+            [3, '0030000102', '20240102', 'Candra Dwi Saputra', '11 TSM', 'TSM#2024'],
         ];
 
         $row = 2;
         foreach ($sampleData as $data) {
             foreach ($data as $col => $value) {
-                $sheet->setCellValue(chr(65 + $col) . $row, $value);
+                $cellRef = chr(65 + $col) . $row;
+                // NISN, NIS dan Password ditulis sebagai teks agar angka 0 di depan tidak hilang
+                if (in_array($col, [1, 2, 5], true)) {
+                    $sheet->setCellValueExplicit($cellRef, (string) $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                }
+                else {
+                    $sheet->setCellValue($cellRef, $value);
+                }
             }
             $row++;
         }
+
+        // Kolom NISN, NIS dan Password diformat teks agar input admin tidak diubah Excel
+        $sheet->getStyle('B2:C500')->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
+        $sheet->getStyle('F2:F500')->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
 
         // Info sheet
         $infoSheet = $spreadsheet->createSheet();
@@ -86,13 +101,16 @@ class ImportSiswaController extends Controller
             ['NIS', 'Nomor Induk Siswa internal sekolah (wajib, unik)'],
             ['Nama Lengkap', 'Nama lengkap siswa (wajib)'],
             ['Kelas', 'Nama kelas (misal: 10 TKJ) atau ID kelas dari sistem (wajib)'],
+            ['Password', 'Password login siswa (opsional). Kosongkan bila ingin di-generate otomatis'],
             ['', ''],
             ['CATATAN:', ''],
-            ['1.', 'Password akan di-generate otomatis oleh sistem'],
-            ['2.', 'Email akan di-generate otomatis dari NISN'],
-            ['3.', 'NISN dan NIS harus unik (tidak boleh duplikat)'],
-            ['4.', 'Nama kelas harus sesuai dengan yang ada di sistem'],
-            ['5.', 'File harus berformat .xlsx atau .xls'],
+            ['1.', 'Password bisa diisi manual: minimal 4 karakter, maksimal 50 karakter, tanpa spasi'],
+            ['2.', 'Jika kolom Password dikosongkan, sistem akan generate password otomatis'],
+            ['3.', 'Password boleh sama untuk beberapa siswa (misal satu password per kelas)'],
+            ['4.', 'Email akan di-generate otomatis dari NISN'],
+            ['5.', 'NISN dan NIS harus unik (tidak boleh duplikat)'],
+            ['6.', 'Nama kelas harus sesuai dengan yang ada di sistem'],
+            ['7.', 'File harus berformat .xlsx atau .xls'],
         ];
 
         $row = 2;
@@ -106,7 +124,7 @@ class ImportSiswaController extends Controller
         }
 
         // Auto-width columns
-        foreach (range('A', 'E') as $col) {
+        foreach (range('A', 'F') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         $infoSheet->getColumnDimension('A')->setAutoSize(true);
@@ -191,10 +209,11 @@ class ImportSiswaController extends Controller
             if (empty(array_filter($rowValues)))
                 continue;
 
-            $nisn = trim($rowValues[1] ?? '');
-            $nis = trim($rowValues[2] ?? '');
-            $nama = trim($rowValues[3] ?? '');
-            $kelasInput = trim($rowValues[4] ?? '');
+            $nisn = trim((string) ($rowValues[1] ?? ''));
+            $nis = trim((string) ($rowValues[2] ?? ''));
+            $nama = trim((string) ($rowValues[3] ?? ''));
+            $kelasInput = trim((string) ($rowValues[4] ?? ''));
+            $passwordInput = trim((string) ($rowValues[5] ?? ''));
 
             $rowErrors = [];
 
@@ -254,6 +273,19 @@ class ImportSiswaController extends Controller
                 }
             }
 
+            // Validate password manual (opsional, kosong = generate otomatis)
+            if ($passwordInput !== '') {
+                if (mb_strlen($passwordInput) < self::PASSWORD_MIN_LENGTH) {
+                    $rowErrors[] = 'Password minimal ' . self::PASSWORD_MIN_LENGTH . ' karakter';
+                }
+                elseif (mb_strlen($passwordInput) > self::PASSWORD_MAX_LENGTH) {
+                    $rowErrors[] = 'Password maksimal ' . self::PASSWORD_MAX_LENGTH . ' karakter';
+                }
+                elseif (preg_match('/\s/u', $passwordInput)) {
+                    $rowErrors[] = 'Password tidak boleh mengandung spasi';
+                }
+            }
+
             $previewData[] = [
                 'row' => $rowNum,
                 'nisn' => $nisn,
@@ -261,6 +293,8 @@ class ImportSiswaController extends Controller
                 'nama' => $nama,
                 'kelas_input' => $kelasInput,
                 'kelas' => $resolvedKelas,
+                'password' => $passwordInput,
+                'password_manual' => $passwordInput !== '',
                 'errors' => $rowErrors,
                 'valid' => empty($rowErrors),
             ];
@@ -311,7 +345,9 @@ class ImportSiswaController extends Controller
         DB::beginTransaction();
         try {
             foreach ($validRows as $row) {
-                $plainPassword = strtoupper(Str::random(8));
+                $manualPassword = trim((string) ($row['password'] ?? ''));
+                $isManualPassword = $manualPassword !== '';
+                $plainPassword = $isManualPassword ? $manualPassword : strtoupper(Str::random(8));
                 $autoEmail = 'siswa.' . $row['nisn'] . '@cbtsmk.local';
 
                 $user = User::create([
@@ -337,6 +373,7 @@ class ImportSiswaController extends Controller
                     'nis' => $row['nis'],
                     'kelas' => $row['kelas']->nama_kelas,
                     'password' => $plainPassword,
+                    'password_manual' => $isManualPassword,
                 ];
 
                 $successCount++;
@@ -395,7 +432,7 @@ class ImportSiswaController extends Controller
         $sheet->setTitle('Kredensial Siswa');
 
         // Headers
-        $headers = ['No', 'Nama', 'NISN (Login)', 'NIS', 'Kelas', 'Password'];
+        $headers = ['No', 'Nama', 'NISN (Login)', 'NIS', 'Kelas', 'Password', 'Sumber Password'];
         foreach ($headers as $col => $header) {
             $cell = chr(65 + $col) . '1';
             $sheet->setCellValue($cell, $header);
@@ -418,7 +455,8 @@ class ImportSiswaController extends Controller
             $sheet->setCellValueExplicit('C' . $row, $cred['nisn'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $sheet->setCellValueExplicit('D' . $row, $cred['nis'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $sheet->setCellValue('E' . $row, $cred['kelas']);
-            $sheet->setCellValue('F' . $row, $cred['password']);
+            $sheet->setCellValueExplicit('F' . $row, $cred['password'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValue('G' . $row, !empty($cred['password_manual']) ? 'Manual (dari file import)' : 'Otomatis');
 
             // Highlight password
             $sheet->getStyle('F' . $row)->applyFromArray([
@@ -428,13 +466,13 @@ class ImportSiswaController extends Controller
         }
 
         // Auto-width
-        foreach (range('A', 'F') as $col) {
+        foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
         // Warning row
         $sheet->setCellValue('A' . ($row + 1), '⚠️ RAHASIA - Jangan bagikan file ini sembarangan! Setelah dicetak, hapus file ini.');
-        $sheet->mergeCells('A' . ($row + 1) . ':F' . ($row + 1));
+        $sheet->mergeCells('A' . ($row + 1) . ':G' . ($row + 1));
         $sheet->getStyle('A' . ($row + 1))->applyFromArray([
             'font' => ['bold' => true, 'color' => ['rgb' => 'F59E0B']],
         ]);
