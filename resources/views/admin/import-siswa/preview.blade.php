@@ -76,8 +76,8 @@
                         </td>
                         <td style="font-weight: 600;">{{ $row['nama'] ?: '-' }}</td>
                         <td>
-                            @if($row['kelas'])
-                                <span class="badge-ios primary">{{ $row['kelas']->nama_kelas }}</span>
+                            @if($row['kelas_nama'])
+                                <span class="badge-ios primary">{{ $row['kelas_nama'] }}</span>
                             @else
                                 <span style="color: #ef4444; font-size: 12px;">{{ $row['kelas_input'] ?: '-' }}</span>
                             @endif

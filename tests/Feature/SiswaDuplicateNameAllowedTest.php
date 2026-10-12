@@ -7,9 +7,7 @@ use App\Models\Kelas;
 use App\Models\Siswa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\UploadedFile;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Tests\Concerns\RunsSiswaImport;
 use Tests\TestCase;
 
 /**
@@ -19,6 +17,7 @@ use Tests\TestCase;
 class SiswaDuplicateNameAllowedTest extends TestCase
 {
     use RefreshDatabase;
+    use RunsSiswaImport;
 
     private function adminUser(): User
     {
@@ -39,49 +38,23 @@ class SiswaDuplicateNameAllowedTest extends TestCase
         return Kelas::create(['nama_kelas' => '10 TKJ', 'jurusan_id' => $jurusan->id, 'is_active' => true]);
     }
 
-    private function buildXlsx(array $rows): string
-    {
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Template Import Siswa');
-        $sheet->fromArray(
-            ['No', 'NISN', 'NIS', 'Nama Lengkap', 'Kelas (ID atau Nama)', 'Password (Opsional)'],
-            null,
-            'A1'
-        );
-        $sheet->fromArray($rows, null, 'A2');
-
-        $path = storage_path('app/test_import_siswa_nama_kembar.xlsx');
-        (new Xlsx($spreadsheet))->save($path);
-
-        return $path;
-    }
-
     public function test_import_menerima_dua_siswa_dengan_nama_sama_asal_nis_berbeda(): void
     {
         $this->kelas();
+        $admin = $this->adminUser();
 
-        $path = $this->buildXlsx([
+        $path = $this->makeImportXlsx([
             [1, '0030000300', '20240300', 'Ahmad Rafi Pratama', '10 TKJ', ''],
             [2, '0030000301', '20240301', 'Ahmad Rafi Pratama', '10 TKJ', ''],
         ]);
 
-        $admin = $this->adminUser();
+        $preview = $this->previewImport($admin, $path);
 
-        $this->actingAs($admin)
-            ->post(route('admin.import-siswa.preview'), [
-                'file' => new UploadedFile($path, 'import.xlsx', null, null, true),
-            ])
-            ->assertOk();
-
-        $preview = session('import_preview');
         $this->assertCount(2, $preview);
         $this->assertTrue($preview[0]['valid'], 'Baris 1 harus valid');
         $this->assertTrue($preview[1]['valid'], 'Nama kembar tidak boleh dianggap duplikat: ' . implode(', ', $preview[1]['errors']));
 
-        $this->actingAs($admin)
-            ->post(route('admin.import-siswa.import'))
-            ->assertRedirect(route('admin.import-siswa.result'));
+        $this->runImportToCompletion($admin);
 
         $this->assertSame(2, Siswa::where('nama', 'Ahmad Rafi Pratama')->count());
 
@@ -107,17 +80,12 @@ class SiswaDuplicateNameAllowedTest extends TestCase
             'user_id' => $existingUser->id,
         ]);
 
-        $path = $this->buildXlsx([
+        $path = $this->makeImportXlsx([
             [1, '0030000401', '20240401', 'Bella Anisa Putri', '10 TKJ', ''],
         ]);
 
-        $this->actingAs($this->adminUser())
-            ->post(route('admin.import-siswa.preview'), [
-                'file' => new UploadedFile($path, 'import.xlsx', null, null, true),
-            ])
-            ->assertOk();
+        $preview = $this->previewImport($this->adminUser(), $path);
 
-        $preview = session('import_preview');
         $this->assertTrue($preview[0]['valid'], 'Nama yang sudah ada di sistem tidak boleh ditolak: ' . implode(', ', $preview[0]['errors']));
 
         @unlink($path);
@@ -127,19 +95,14 @@ class SiswaDuplicateNameAllowedTest extends TestCase
     {
         $this->kelas();
 
-        $path = $this->buildXlsx([
+        $path = $this->makeImportXlsx([
             [1, '0030000500', '20240500', 'Candra Dwi Saputra', '10 TKJ', ''],
             [2, '0030000500', '20240501', 'Candra Dwi Saputra', '10 TKJ', ''],
             [3, '0030000502', '20240500', 'Candra Dwi Saputra', '10 TKJ', ''],
         ]);
 
-        $this->actingAs($this->adminUser())
-            ->post(route('admin.import-siswa.preview'), [
-                'file' => new UploadedFile($path, 'import.xlsx', null, null, true),
-            ])
-            ->assertOk();
+        $preview = $this->previewImport($this->adminUser(), $path);
 
-        $preview = session('import_preview');
         $this->assertTrue($preview[0]['valid']);
         $this->assertFalse($preview[1]['valid']);
         $this->assertContains("NISN '0030000500' duplikat dalam file", $preview[1]['errors']);

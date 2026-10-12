@@ -76,6 +76,8 @@ Route::middleware(['auth', 'role:superadmin,admin'])->prefix('admin')->name('adm
     Route::get('/import-siswa', [ImportSiswaController::class , 'index'])->name('import-siswa.index');
     Route::post('/import-siswa/preview', [ImportSiswaController::class , 'preview'])->name('import-siswa.preview');
     Route::post('/import-siswa/import', [ImportSiswaController::class , 'import'])->name('import-siswa.import');
+    Route::get('/import-siswa/progress', [ImportSiswaController::class , 'progress'])->name('import-siswa.progress');
+    Route::post('/import-siswa/process-chunk', [ImportSiswaController::class , 'processChunk'])->name('import-siswa.process-chunk');
     Route::get('/import-siswa/result', [ImportSiswaController::class , 'result'])->name('import-siswa.result');
     Route::get('/import-siswa/template', [ImportSiswaController::class , 'downloadTemplate'])->name('import-siswa.template');
     Route::get('/import-siswa/download-credentials', [ImportSiswaController::class , 'downloadCredentials'])->name('import-siswa.download-credentials');

@@ -6,6 +6,22 @@
 
 @section('content')
 <div class="fade-in">
+    @if($resumable)
+        {{-- Import yang terputus bisa dilanjutkan dari posisi terakhir --}}
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.22); border-radius: 14px; padding: 14px 18px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="bi bi-hourglass-split" style="color: #d97706; font-size: 20px;"></i>
+                <div style="font-size: 13px; color: #92400e; line-height: 1.6;">
+                    <strong>Ada import yang belum selesai.</strong>
+                    Baru <strong>{{ $resumable['done'] }}</strong> dari <strong>{{ $resumable['total'] }}</strong> baris yang diproses.
+                </div>
+            </div>
+            <a href="{{ route('admin.import-siswa.progress') }}" class="btn btn-ios btn-ios-sm btn-ios-warning">
+                <i class="bi bi-play-fill"></i> Lanjutkan Import
+            </a>
+        </div>
+    @endif
+
     <div class="row g-4">
         {{-- Upload Card --}}
         <div class="col-lg-7">
@@ -33,6 +49,7 @@
                                     <li>Jika kolom Password <strong>dikosongkan</strong>, sistem generate password otomatis</li>
                                     <li>Siswa login menggunakan <strong>NISN + Password</strong></li>
                                     <li>Format file: <strong>.xlsx</strong> atau <strong>.xls</strong> (maks. 5MB)</li>
+                                    <li>Data ribuan siswa diproses <strong>bertahap</strong> dengan halaman progress — biarkan halaman terbuka sampai selesai</li>
                                 </ul>
                             </div>
                         </div>

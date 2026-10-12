@@ -27,6 +27,30 @@
         </div>
     </div>
 
+    @if(!empty($skippedRows) || !empty($invalidSkipped))
+        {{-- Baris yang tidak ikut masuk --}}
+        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 14px; padding: 14px 20px; margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <i class="bi bi-info-circle-fill" style="color: #f59e0b; font-size: 18px;"></i>
+                <div style="font-size: 13px; color: #92400e; font-weight: 600;">
+                    @if(!empty($invalidSkipped))
+                        {{ $invalidSkipped }} baris bermasalah dilewati sesuai pilihan Anda.
+                    @endif
+                    @if(!empty($skippedRows))
+                        {{ count($skippedRows) }} baris tidak diimport karena NISN/NIS sudah terdaftar.
+                    @endif
+                </div>
+            </div>
+            @if(!empty($skippedRows))
+                <div style="margin-top: 10px; max-height: 160px; overflow-y: auto; font-size: 12px; color: #7c2d12; line-height: 1.8;">
+                    @foreach($skippedRows as $skip)
+                        <div>&middot; {{ $skip['nama'] }} — NISN {{ $skip['nisn'] }} / NIS {{ $skip['nis'] }} ({{ $skip['alasan'] }})</div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- Action Buttons Top --}}
     <div class="d-flex gap-2 mb-3 flex-wrap">
         <a href="{{ route('admin.import-siswa.download-credentials') }}" class="btn btn-ios btn-ios-success">
