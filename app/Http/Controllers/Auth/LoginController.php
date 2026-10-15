@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Models\Siswa;
 use App\Models\User;
+use App\Services\PasswordVerifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cookie;
-use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
+    public function __construct(protected PasswordVerifier $passwords)
+    {
+    }
+
     /**
      * Siswa login page (NIS + password).
      */
@@ -50,7 +54,15 @@ class LoginController extends Controller
             ])->withInput($request->only('nis'));
         }
 
-        if (Hash::check($request->password, $user->password)) {
+        $result = $this->passwords->check($user, $request->input('password'));
+
+        if ($result === PasswordVerifier::UNUSABLE_HASH) {
+            return back()->withErrors([
+                'nis' => 'Password akun Anda tidak bisa diverifikasi. Hubungi administrator untuk reset password.',
+            ])->withInput($request->only('nis'));
+        }
+
+        if ($result === PasswordVerifier::VALID) {
             if (!$user->is_active) {
                 return back()->withErrors([
                     'nis' => 'Akun Anda tidak aktif. Hubungi administrator.',
@@ -112,10 +124,22 @@ class LoginController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (Auth::attempt($request->only('email', 'password'), $request->filled('remember'))) {
-            $request->session()->regenerate();
+        // Auth::attempt() tidak dipakai: pemeriksaannya memanggil Hash::check()
+        // di dalam user provider, jadi hash yang tidak sah melempar exception
+        // dan login staff pun balas 500 — sama seperti jalur siswa.
+        $result = $user
+            ? $this->passwords->check($user, $request->input('password'))
+            : PasswordVerifier::INVALID;
 
-            $user = Auth::user();
+        if ($result === PasswordVerifier::UNUSABLE_HASH) {
+            return back()->withErrors([
+                'email' => 'Password akun Anda tidak bisa diverifikasi. Hubungi administrator untuk reset password.',
+            ])->withInput($request->only('email'));
+        }
+
+        if ($result === PasswordVerifier::VALID) {
+            Auth::login($user, $request->filled('remember'));
+            $request->session()->regenerate();
 
             // This page is staff-only — a siswa account with valid credentials
             // still doesn't belong here. Not treated as a failed attempt since
