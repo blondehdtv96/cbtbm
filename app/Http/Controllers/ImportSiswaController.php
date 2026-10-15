@@ -648,7 +648,7 @@ class ImportSiswaController extends Controller
         $sheet->setTitle('Kredensial Siswa');
 
         // Headers
-        $headers = ['No', 'Nama', 'NISN (Login)', 'NIS', 'Kelas', 'Password', 'Sumber Password'];
+        $headers = ['No', 'Nama', 'NIS (Login)', 'NISN', 'Kelas', 'Password', 'Sumber Password'];
         foreach ($headers as $col => $header) {
             $cell = chr(65 + $col) . '1';
             $sheet->setCellValue($cell, $header);
@@ -668,8 +668,8 @@ class ImportSiswaController extends Controller
         foreach ($credentials as $idx => $cred) {
             $sheet->setCellValue('A' . $row, $idx + 1);
             $sheet->setCellValue('B' . $row, $cred['nama']);
-            $sheet->setCellValueExplicit('C' . $row, $cred['nisn'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
-            $sheet->setCellValueExplicit('D' . $row, $cred['nis'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('C' . $row, $cred['nis'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('D' . $row, $cred['nisn'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $sheet->setCellValue('E' . $row, $cred['kelas']);
             $sheet->setCellValueExplicit('F' . $row, $cred['password'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $sheet->setCellValue('G' . $row, !empty($cred['password_manual']) ? 'Manual (dari file import)' : 'Otomatis');

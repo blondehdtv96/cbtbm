@@ -197,10 +197,10 @@
         @php
             $jurusanKode = $siswa->kelas->jurusan->kode_jurusan ?? '';
             $namaKelas = $siswa->kelas->nama_kelas ?? '';
-            $username = $siswa->user->nisn ?? $siswa->nisn ?? ($siswa->user->email ?? '-');
+            $username = $siswa->nis ?? ($siswa->user->email ?? '-');
             
-            // Get actual plain_password if available, otherwise fallback to nisn/nis
-            $password = $siswa->user->plain_password ?? $siswa->nisn ?? $siswa->nis ?? '-';
+            // Get actual plain_password if available, otherwise fall back to the NIS
+            $password = $siswa->user->plain_password ?? $siswa->nis ?? '-';
             
             // Sesi-Ruang from request or settings
             $sesiRuangVal = $sesiRuang ?: '-';
@@ -244,7 +244,7 @@
                     @endif
                     @if($kartuSettings['show_username'] == '1')
                     <tr>
-                        <td class="lbl">Username</td>
+                        <td class="lbl">NIS (Login)</td>
                         <td class="sep">:</td>
                         <td class="val">{{ $username }}</td>
                     </tr>

@@ -75,8 +75,8 @@
                     <tr>
                         <th style="width: 50px;">No</th>
                         <th>Nama Lengkap</th>
-                        <th>NISN (Login)</th>
-                        <th>NIS</th>
+                        <th>NIS (Login)</th>
+                        <th>NISN</th>
                         <th>Kelas</th>
                         <th>Password</th>
                     </tr>
@@ -88,10 +88,10 @@
                         <td style="font-weight: 600;">{{ $cred['nama'] }}</td>
                         <td>
                             <span style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 4px 12px; border-radius: 8px; font-weight: 700; font-size: 13px; font-family: monospace; letter-spacing: 1px;">
-                                {{ $cred['nisn'] }}
+                                {{ $cred['nis'] }}
                             </span>
                         </td>
-                        <td><code>{{ $cred['nis'] }}</code></td>
+                        <td><code>{{ $cred['nisn'] }}</code></td>
                         <td>
                             <span class="badge-ios primary">{{ $cred['kelas'] }}</span>
                         </td>
@@ -144,7 +144,7 @@ function printCredentials() {
             <p class="sub">Kredensial Login Siswa — Hasil Import ${new Date().toLocaleDateString('id-ID')}</p>
             <table>
                 <thead>
-                    <tr><th>No</th><th>Nama</th><th>NISN (Login)</th><th>NIS</th><th>Kelas</th><th>Password</th></tr>
+                    <tr><th>No</th><th>Nama</th><th>NIS (Login)</th><th>NISN</th><th>Kelas</th><th>Password</th></tr>
                 </thead>
                 <tbody>
                     @foreach($credentials as $idx => $cred)
@@ -173,8 +173,8 @@ function copyAllCredentials() {
 
     @foreach($credentials as $idx => $cred)
     text += '{{ $idx + 1 }}. {{ $cred['nama'] }}\n';
-    text += '   NISN (Login): {{ $cred['nisn'] }}\n';
-    text += '   NIS: {{ $cred['nis'] }}\n';
+    text += '   NIS (Login): {{ $cred['nis'] }}\n';
+    text += '   NISN: {{ $cred['nisn'] }}\n';
     text += '   Kelas: {{ $cred['kelas'] }}\n';
     text += '   Password: {{ $cred['password'] }}\n\n';
     @endforeach

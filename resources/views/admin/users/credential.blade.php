@@ -58,10 +58,10 @@
                                 <td colspan="2" style="padding: 12px 0 4px;"><hr style="border-color: var(--border-color); margin: 0;"></td>
                             </tr>
                             <tr>
-                                <td style="padding: 8px 0; font-size: 13px; color: var(--text-secondary); font-weight: 500;">Login NISN</td>
+                                <td style="padding: 8px 0; font-size: 13px; color: var(--text-secondary); font-weight: 500;">Login NIS</td>
                                 <td style="padding: 8px 0;">
                                     <span style="background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 6px 14px; border-radius: 8px; font-weight: 800; font-size: 16px; letter-spacing: 2px; font-family: monospace;">
-                                        {{ $siswa->nisn ?? '-' }}
+                                        {{ $siswa->nis ?? '-' }}
                                     </span>
                                 </td>
                             </tr>
@@ -139,7 +139,7 @@ function printCredential() {
                     <tr><td class="label">NISN</td><td class="value">{{ $siswa->nisn ?? '-' }}</td></tr>
                     <tr><td class="label">Kelas</td><td class="value">{{ $siswa->kelas->nama_kelas ?? '-' }}</td></tr>
                     <tr><td colspan="2"><hr></td></tr>
-                    <tr><td class="label">Login NISN</td><td><span class="highlight">{{ $siswa->nisn ?? '-' }}</span></td></tr>
+                    <tr><td class="label">Login NIS</td><td><span class="highlight">{{ $siswa->nis ?? '-' }}</span></td></tr>
                     <tr><td class="label">Password</td><td><span class="highlight-warn">{{ $generatedPassword }}</span></td></tr>
                 </table>
             </div>
@@ -161,7 +161,7 @@ function copyCredential() {
         `NISN: {{ $siswa->nisn ?? '-' }}\n` +
         `Kelas: {{ $siswa->kelas->nama_kelas ?? '-' }}\n` +
         `---\n` +
-        `Login NISN: {{ $siswa->nisn ?? '-' }}\n` +
+        `Login NIS: {{ $siswa->nis ?? '-' }}\n` +
         `Password: {{ $generatedPassword }}`;
 
     navigator.clipboard.writeText(text).then(() => {

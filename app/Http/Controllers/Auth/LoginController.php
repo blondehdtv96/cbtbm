@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Hash;
 class LoginController extends Controller
 {
     /**
-     * Siswa login page (NISN + password).
+     * Siswa login page (NIS + password).
      */
     public function showLoginForm()
     {
@@ -26,32 +26,35 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
+        // NIS adalah identitas login siswa: kolomnya wajib dan unik untuk
+        // setiap siswa, sedangkan NISN boleh kosong (nullable) sehingga tidak
+        // semua siswa punya nilai yang bisa dipakai masuk.
         $request->validate([
-            'nisn' => 'required|string',
+            'nis' => 'required|string',
             'password' => 'required',
         ]);
 
-        $siswa = Siswa::where('nisn', $request->nisn)->first();
+        $siswa = Siswa::where('nis', $request->input('nis'))->first();
 
         if (!$siswa) {
             return back()->withErrors([
-                'nisn' => 'Username tidak ditemukan dalam sistem.',
-            ])->withInput($request->only('nisn'));
+                'nis' => 'NIS tidak ditemukan dalam sistem.',
+            ])->withInput($request->only('nis'));
         }
 
         $user = $siswa->user;
 
         if (!$user) {
             return back()->withErrors([
-                'nisn' => 'Akun untuk Username ini tidak ditemukan.',
-            ])->withInput($request->only('nisn'));
+                'nis' => 'Akun untuk NIS ini tidak ditemukan.',
+            ])->withInput($request->only('nis'));
         }
 
         if (Hash::check($request->password, $user->password)) {
             if (!$user->is_active) {
                 return back()->withErrors([
-                    'nisn' => 'Akun Anda tidak aktif. Hubungi administrator.',
-                ])->withInput($request->only('nisn'));
+                    'nis' => 'Akun Anda tidak aktif. Hubungi administrator.',
+                ])->withInput($request->only('nis'));
             }
 
             Auth::login($user, $request->filled('remember'));
@@ -64,7 +67,7 @@ class LoginController extends Controller
                 'last_login' => now(),
             ]);
 
-            ActivityLog::log('login', 'auth', 'Siswa login via Username');
+            ActivityLog::log('login', 'auth', 'Siswa login via NIS');
 
             $rulesEnabled = filter_var(
                 \App\Models\SystemSetting::get('student_rules_enabled', '1'),
@@ -84,8 +87,8 @@ class LoginController extends Controller
         $this->handleFailedLogin($user);
 
         return back()->withErrors([
-            'nisn' => 'Username atau password salah.',
-        ])->withInput($request->only('nisn'));
+            'nis' => 'NIS atau password salah.',
+        ])->withInput($request->only('nis'));
     }
 
     /**

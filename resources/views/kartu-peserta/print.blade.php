@@ -400,12 +400,12 @@
                         </div>
                     </div>
                     <div class="kartu-info-item">
-                        <div class="info-label">Username</div>
-                        <div class="info-value">{{ $siswa->user->nisn ?? $siswa->nisn ?? ($siswa->user->email ?? '-') }}</div>
+                        <div class="info-label">NIS (Login)</div>
+                        <div class="info-value">{{ $siswa->nis ?? ($siswa->user->email ?? '-') }}</div>
                     </div>
                     <div class="kartu-info-item">
                         <div class="info-label">Password</div>
-                        <div class="info-value">{{ $siswa->user->plain_password ?? $siswa->nisn ?? $siswa->nis ?? '-' }}</div>
+                        <div class="info-value">{{ $siswa->user->plain_password ?? $siswa->nis ?? '-' }}</div>
                     </div>
                 </div>
 

@@ -27,7 +27,7 @@ class LogoutOnNewDay
             Cookie::queue(Cookie::forget(self::COOKIE));
 
             return redirect()->route('login')->withErrors([
-                'nisn' => 'Sesi Anda berakhir karena pergantian hari. Silakan login kembali.',
+                'nis' => 'Sesi Anda berakhir karena pergantian hari. Silakan login kembali.',
             ]);
         }
 
