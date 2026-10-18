@@ -455,6 +455,33 @@ class DiagnoseLogin extends Command
             return 'bisa ditulis';
         }, 'Penulisan activity_logs gagal — POST /login akan balas 500 sesudah password terverifikasi');
 
+        $this->step('Simpan persetujuan peraturan siswa', function () use ($user) {
+            // Popup peraturan menghalangi seluruh dashboard, jadi kolom ini
+            // harus bisa ditulis: tanpanya siswa menekan "Setuju" dan tidak
+            // pernah sampai ke daftar ujian.
+            $missing = array_values(array_filter(
+                ['student_rules_ack_version', 'student_rules_acknowledged_at'],
+                static fn (string $column): bool => !Schema::hasColumn('users', $column)
+            ));
+
+            if ($missing !== []) {
+                $this->problems[] = 'Persetujuan peraturan siswa tidak bisa disimpan (kolom hilang: '
+                    . implode(', ', $missing) . ') — popup peraturan akan muncul lagi setiap login '
+                    . 'sampai `php artisan migrate --force` dijalankan';
+
+                return 'TIDAK BISA DISIMPAN: kolom ' . implode(', ', $missing) . ' hilang';
+            }
+
+            DB::table('users')
+                ->where('id', $user->id)
+                ->update([
+                    'student_rules_ack_version' => $user->student_rules_ack_version,
+                    'student_rules_acknowledged_at' => $user->student_rules_acknowledged_at,
+                ]);
+
+            return 'bisa ditulis';
+        }, 'POST /siswa/peraturan/acknowledge balas 500 — siswa terkunci di popup peraturan');
+
         $this->step('Render dashboard siswa (tujuan redirect)', function () use ($user) {
             $previous = Auth::user();
             Auth::setUser($user);

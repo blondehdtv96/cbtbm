@@ -176,15 +176,37 @@ class DashboardController extends Controller
         }
 
         $rulesVersion = max(1, (int) \App\Models\SystemSetting::get('student_rules_version', 1));
-        $request->user()->forceFill([
-            'student_rules_ack_version' => $rulesVersion,
-            'student_rules_acknowledged_at' => now(),
-        ])->save();
+
+        // Kolom student_rules_* berasal dari migrasi 2026_09_13_000000. Di
+        // server yang belum termigrasi, penulisan ini ditolak MySQL — dan
+        // karena popup peraturan menghalangi seluruh dashboard, siswa jadi
+        // terkunci di 500 tepat sesudah login: dashboard terbuka, popup
+        // muncul, tombol "Setuju" membalas 500, dan tidak ada jalan ke ujian.
+        // Persetujuannya tidak bisa disimpan tanpa kolom itu, jadi popupnya
+        // akan muncul lagi di login berikutnya, tapi siswa tetap bisa masuk.
+        $persisted = true;
+
+        try {
+            $request->user()->forceFill([
+                'student_rules_ack_version' => $rulesVersion,
+                'student_rules_acknowledged_at' => now(),
+            ])->save();
+        } catch (\Throwable $e) {
+            $persisted = false;
+
+            \Illuminate\Support\Facades\Log::error('Persetujuan peraturan siswa tidak bisa disimpan.', [
+                'user_id' => $request->user()->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'saran' => 'Jalankan php artisan migrate --force di server (lihat php artisan diagnose:login)',
+            ]);
+        }
 
         $request->session()->forget('student_rules_pending_version');
 
         return response()->json([
             'success' => true,
+            'persisted' => $persisted,
             'version' => $rulesVersion,
             'acknowledged_at' => now()->toIso8601String(),
         ]);

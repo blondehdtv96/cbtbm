@@ -135,6 +135,24 @@ class LoginSurvivesPendingMigrationTest extends TestCase
             ->assertOk();
     }
 
+    public function test_setuju_peraturan_tidak_balas_500_walau_kolom_persetujuan_belum_termigrasi(): void
+    {
+        $siswa = $this->makeSiswa('20250007', 'rahasia123');
+
+        // Popup peraturan menghalangi seluruh dashboard: kalau tombol "Setuju"
+        // balas 500, siswa tidak punya jalan sama sekali ke daftar ujian.
+        Schema::table('users', function ($table) {
+            $table->dropColumn(['student_rules_ack_version', 'student_rules_acknowledged_at']);
+        });
+
+        $response = $this->actingAs($siswa->user->fresh())
+            ->postJson(route('siswa.rules.acknowledge'));
+
+        $response->assertOk();
+        $response->assertJson(['success' => true, 'persisted' => false]);
+        $this->assertFalse(session()->has('student_rules_pending_version'));
+    }
+
     public function test_password_salah_tetap_balas_pesan_bukan_500_walau_kolom_percobaan_hilang(): void
     {
         $siswa = $this->makeSiswa('20250004', 'rahasia123');
