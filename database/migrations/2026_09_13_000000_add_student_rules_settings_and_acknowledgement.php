@@ -9,9 +9,19 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // Kolom dicek satu per satu agar migrasi ini tetap bisa dijalankan di
+        // server yang kolomnya sudah ditambahkan lebih dulu oleh
+        // `php artisan app:repair-schema` — tanpa guard ini, ALTER TABLE
+        // menolak dengan error 1060 (duplicate column) dan `migrate --force`
+        // berhenti di tengah jalan.
         Schema::table('users', function (Blueprint $table) {
-            $table->unsignedInteger('student_rules_ack_version')->nullable()->after('last_seen_at');
-            $table->timestamp('student_rules_acknowledged_at')->nullable()->after('student_rules_ack_version');
+            if (!Schema::hasColumn('users', 'student_rules_ack_version')) {
+                $table->unsignedInteger('student_rules_ack_version')->nullable()->after('last_seen_at');
+            }
+
+            if (!Schema::hasColumn('users', 'student_rules_acknowledged_at')) {
+                $table->timestamp('student_rules_acknowledged_at')->nullable()->after('student_rules_ack_version');
+            }
         });
 
         $now = now();
@@ -56,7 +66,10 @@ return new class extends Migration
         ])->delete();
 
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['student_rules_ack_version', 'student_rules_acknowledged_at']);
+            $table->dropColumn(array_values(array_filter(
+                ['student_rules_ack_version', 'student_rules_acknowledged_at'],
+                static fn (string $column): bool => Schema::hasColumn('users', $column)
+            )));
         });
     }
 

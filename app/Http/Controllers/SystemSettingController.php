@@ -3,17 +3,29 @@
 namespace App\Http\Controllers;
 
 use App\Models\SystemSetting;
+use App\Services\StudentRulesSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Artisan;
 
 class SystemSettingController extends Controller
 {
+    public function __construct(protected StudentRulesSettings $studentRules)
+    {
+    }
+
     /**
      * Display settings page
      */
     public function index()
     {
+        // Form-nya dirender dari baris system_settings yang ada, jadi grup yang
+        // kosong tampil tanpa satu pun field — admin melihat "Peraturan Siswa"
+        // tanpa kolom dan tidak punya cara membuatnya. Itu terjadi di server
+        // yang belum menjalankan migrasi 2026_09_13_000000. Barisnya dipastikan
+        // ada di sini supaya halamannya selalu bisa dipakai.
+        $this->studentRules->ensureExists();
+
         $groups = [
             'general' => 'Pengaturan Umum',
             'appearance' => 'Tampilan',
@@ -27,7 +39,12 @@ class SystemSettingController extends Controller
             $settings[$key] = SystemSetting::getByGroup($key);
         }
 
-        return view('admin.settings.index', compact('settings', 'groups'));
+        // Peringatan untuk admin kalau kolom persetujuan belum ada: peraturannya
+        // tetap bisa disunting dan tampil ke siswa, tapi persetujuan siswa tidak
+        // tersimpan sehingga popupnya muncul lagi setiap login.
+        $rulesAckPersists = $this->studentRules->canPersistAcknowledgement();
+
+        return view('admin.settings.index', compact('settings', 'groups', 'rulesAckPersists'));
     }
 
     /**
@@ -35,26 +52,42 @@ class SystemSettingController extends Controller
      */
     public function update(Request $request)
     {
+        // Barisnya dipastikan ada lebih dulu: perulangan penyimpanan di bawah
+        // berjalan atas SystemSetting::all(), jadi kunci yang belum punya baris
+        // akan dilewati begitu saja — nilainya terkirim dari form tapi tidak
+        // pernah tersimpan.
+        $this->studentRules->ensureExists();
+
         $currentRulesVersion = max(1, (int) SystemSetting::get('student_rules_version', 1));
-        $rulesChanged = trim((string) $request->input('student_rules_title'))
-                !== trim((string) SystemSetting::get('student_rules_title', ''))
-            || trim((string) $request->input('student_rules_content'))
-                !== trim((string) SystemSetting::get('student_rules_content', ''));
-        $requestedRulesVersion = (int) $request->input('student_rules_version', $currentRulesVersion);
-        $versionRaisedAutomatically = $rulesChanged && $requestedRulesVersion <= $currentRulesVersion;
 
-        if ($versionRaisedAutomatically) {
-            $request->merge(['student_rules_version' => $currentRulesVersion + 1]);
+        // Aturan peraturan siswa hanya divalidasi kalau field-nya ikut terkirim.
+        // Halaman lama yang masih ter-cache di browser admin (atau form yang
+        // dirender sebelum barisnya ada) tidak memuat field ini; memaksanya
+        // 'required' membuat SELURUH pengaturan gagal disimpan dengan pesan
+        // validasi tentang peraturan siswa yang field-nya tidak kelihatan.
+        if ($request->hasAny(['student_rules_title', 'student_rules_content', 'student_rules_version'])) {
+            $rulesChanged = trim((string) $request->input('student_rules_title'))
+                    !== trim((string) SystemSetting::get('student_rules_title', ''))
+                || trim((string) $request->input('student_rules_content'))
+                    !== trim((string) SystemSetting::get('student_rules_content', ''));
+            $requestedRulesVersion = (int) $request->input('student_rules_version', $currentRulesVersion);
+            $versionRaisedAutomatically = $rulesChanged && $requestedRulesVersion <= $currentRulesVersion;
+
+            if ($versionRaisedAutomatically) {
+                $request->merge(['student_rules_version' => $currentRulesVersion + 1]);
+            }
+
+            $request->validate([
+                'student_rules_title' => ['required', 'string', 'max:150'],
+                'student_rules_content' => ['required', 'string', 'min:100', 'max:20000'],
+                'student_rules_version' => ['required', 'integer', 'min:' . $currentRulesVersion, 'max:999999'],
+            ], [
+                'student_rules_content.min' => 'Isi peraturan siswa minimal 100 karakter.',
+                'student_rules_version.min' => 'Versi peraturan tidak boleh lebih rendah dari versi aktif.',
+            ]);
+        } else {
+            $versionRaisedAutomatically = false;
         }
-
-        $request->validate([
-            'student_rules_title' => ['required', 'string', 'max:150'],
-            'student_rules_content' => ['required', 'string', 'min:100', 'max:20000'],
-            'student_rules_version' => ['required', 'integer', 'min:' . $currentRulesVersion, 'max:999999'],
-        ], [
-            'student_rules_content.min' => 'Isi peraturan siswa minimal 100 karakter.',
-            'student_rules_version.min' => 'Versi peraturan tidak boleh lebih rendah dari versi aktif.',
-        ]);
 
         try {
             foreach (SystemSetting::all() as $setting) {
@@ -141,7 +174,7 @@ class SystemSettingController extends Controller
                 '--force' => true,
             ]);
 
-            $this->restoreStudentRuleSettings($nextRulesVersion);
+            $this->studentRules->restoreDefaults($nextRulesVersion);
             SystemSetting::clearCache();
 
             return redirect()->back()->with(
@@ -168,32 +201,5 @@ class SystemSettingController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Gagal membersihkan cache: ' . $e->getMessage());
         }
-    }
-
-    private function restoreStudentRuleSettings(int $version): void
-    {
-        $settings = [
-            ['key' => 'student_rules_enabled', 'value' => '1', 'type' => 'boolean', 'group' => 'student', 'label' => 'Aktifkan Peraturan Siswa', 'description' => 'Wajibkan siswa membaca dan menyetujui peraturan setelah login.', 'order' => 1],
-            ['key' => 'student_rules_title', 'value' => 'Peraturan Penggunaan CBT untuk Siswa', 'type' => 'text', 'group' => 'student', 'label' => 'Judul Popup Peraturan', 'description' => 'Judul yang ditampilkan pada popup peraturan siswa.', 'order' => 2],
-            ['key' => 'student_rules_content', 'value' => $this->defaultStudentRulesContent(), 'type' => 'textarea', 'group' => 'student', 'label' => 'Isi Peraturan Siswa', 'description' => 'Isi peraturan wajib yang dibaca siswa. Konten ditampilkan sebagai teks aman.', 'order' => 3],
-            ['key' => 'student_rules_version', 'value' => (string) $version, 'type' => 'number', 'group' => 'student', 'label' => 'Versi Peraturan', 'description' => 'Naikkan versi agar seluruh siswa diminta menyetujui kembali.', 'order' => 4],
-        ];
-
-        foreach ($settings as $setting) {
-            SystemSetting::updateOrCreate(['key' => $setting['key']], $setting);
-        }
-    }
-
-    private function defaultStudentRulesContent(): string
-    {
-        $path = base_path('PERATURAN_PENGGUNAAN_SISWA.md');
-        if (!is_file($path)) {
-            return 'Siswa wajib mengerjakan ujian secara jujur, menjaga kerahasiaan akun dan token, tidak membuka tab atau aplikasi lain, serta mengikuti arahan pengawas.';
-        }
-
-        $content = (string) file_get_contents($path);
-        $content = preg_replace('/^#{1,6}\s+/m', '', $content);
-
-        return trim(str_replace(['**', '---'], '', $content));
     }
 }

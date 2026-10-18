@@ -64,6 +64,28 @@
                                      role="tabpanel">
 
                                     @if($groupKey === 'student')
+                                        {{-- Kolom users.student_rules_* berasal dari migrasi 2026_09_13_000000.
+                                             Tanpa kolom itu peraturannya tetap bisa disunting dan tampil ke siswa,
+                                             tapi persetujuannya tidak punya tempat disimpan — popupnya muncul lagi
+                                             setiap login. Admin perlu tahu itu di sini, bukan dari laporan siswa. --}}
+                                        @unless($rulesAckPersists ?? true)
+                                            <div class="alert alert-warning d-flex gap-3 align-items-start mb-4" role="alert">
+                                                <i class="bi bi-exclamation-triangle fs-4"></i>
+                                                <div>
+                                                    <strong>Persetujuan siswa belum bisa disimpan</strong>
+                                                    <div class="small mt-1">
+                                                        Database server belum punya kolom penyimpan persetujuan, jadi popup
+                                                        peraturan akan muncul lagi setiap siswa login. Peraturan di bawah tetap
+                                                        bisa disunting dan tetap tampil ke siswa.
+                                                        Minta administrator server menjalankan
+                                                        <code>php artisan migrate --force</code>, atau
+                                                        <code>php artisan app:repair-schema</code> bila migrasinya dilaporkan
+                                                        sudah lengkap.
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endunless
+
                                         <div class="alert alert-primary d-flex gap-3 align-items-start mb-4" role="alert">
                                             <i class="bi bi-shield-check fs-4"></i>
                                             <div>
