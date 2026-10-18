@@ -137,11 +137,26 @@ class DashboardController extends Controller
             // Alert pelanggaran anti-cheat: bukan flash session (hilang sekali
             // reload), tapi persisten dari database, supaya tetap tampil setiap
             // dashboard dibuka sampai admin reset peserta ujian yang bersangkutan.
-            $data['pelanggaranAktif'] = PesertaUjian::with('ujian')
-                ->where('siswa_id', $siswa->id)
-                ->where('violation_flag', true)
-                ->latest('violated_at')
-                ->get();
+            //
+            // Kolom violation_* berasal dari migrasi yang relatif baru
+            // (2026_09_18_000313). Di server yang belum menjalankan `php artisan
+            // migrate`, query ini ditolak MySQL dan membuat dashboard balas 500
+            // tepat sesudah login berhasil — siswa jadi tidak bisa masuk ujian
+            // sama sekali hanya karena sebuah alert informatif. Alert-nya
+            // dilewati dan errornya dicatat; lihat `php artisan diagnose:login`.
+            try {
+                $data['pelanggaranAktif'] = PesertaUjian::with('ujian')
+                    ->where('siswa_id', $siswa->id)
+                    ->where('violation_flag', true)
+                    ->latest('violated_at')
+                    ->get();
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Alert pelanggaran anti-cheat dilewati di dashboard siswa.', [
+                    'siswa_id' => $siswa->id,
+                    'exception' => get_class($e),
+                    'message' => $e->getMessage(),
+                ]);
+            }
         }
 
         return view('dashboard.siswa', $data);

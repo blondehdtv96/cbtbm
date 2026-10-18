@@ -73,25 +73,13 @@ class LoginController extends Controller
             $request->session()->regenerate();
             $this->rememberLoginDate();
 
-            $user->update([
-                'login_attempts' => 0,
-                'locked_until' => null,
-                'last_login' => now(),
-            ]);
-
-            ActivityLog::log('login', 'auth', 'Siswa login via NIS');
-
-            $rulesEnabled = filter_var(
-                \App\Models\SystemSetting::get('student_rules_enabled', '1'),
-                FILTER_VALIDATE_BOOLEAN
-            );
-            $rulesVersion = max(1, (int) \App\Models\SystemSetting::get('student_rules_version', 1));
-
-            if ($rulesEnabled && (int) $user->student_rules_ack_version < $rulesVersion) {
-                $request->session()->put('student_rules_pending_version', $rulesVersion);
-            } else {
-                $request->session()->forget('student_rules_pending_version');
-            }
+            // Pembukuan sesudah autentikasi — stempel login, catatan aktivitas,
+            // dan pengecekan versi peraturan — dijalankan best-effort. Tidak
+            // satu pun menentukan boleh-tidaknya siswa masuk, jadi kegagalannya
+            // (kolom belum ada karena migrasi tertunda, activity_logs penuh,
+            // system_settings tidak terbaca) tidak boleh mengubah login yang
+            // sudah sah menjadi "500 Server Error" di tengah ujian.
+            $this->afterLogin($request, $user, 'Siswa login via NIS');
 
             return $this->redirectByRole($user);
         }
@@ -163,13 +151,7 @@ class LoginController extends Controller
 
             $this->rememberLoginDate();
 
-            $user->update([
-                'login_attempts' => 0,
-                'locked_until' => null,
-                'last_login' => now(),
-            ]);
-
-            ActivityLog::log('login', 'auth', 'Staff login via email');
+            $this->afterLogin($request, $user, 'Staff login via email');
 
             return $this->redirectByRole($user);
         }
@@ -184,11 +166,70 @@ class LoginController extends Controller
     }
 
     /**
+     * Pembukuan sesudah autentikasi berhasil.
+     *
+     * Semuanya opsional terhadap hak masuk user: stempel last_login hanya
+     * dipakai laporan, activity_logs hanya jejak audit, dan versi peraturan
+     * punya nilai bawaan yang aman. Karena itu tiap bagian dibungkus agar
+     * error-nya tercatat ke log tetapi requestnya tetap lanjut ke redirect.
+     * Tanpa ini, satu kolom yang belum termigrasi di server cukup membuat
+     * seluruh siswa menerima 500 padahal password mereka sudah terverifikasi.
+     */
+    protected function afterLogin(Request $request, User $user, string $logDescription): void
+    {
+        $this->attempt('stempel status login', fn () => $user->update([
+            'login_attempts' => 0,
+            'locked_until' => null,
+            'last_login' => now(),
+        ]));
+
+        $this->attempt('catat aktivitas login', fn () => ActivityLog::log('login', 'auth', $logDescription));
+
+        $this->attempt('cek versi peraturan siswa', function () use ($request, $user) {
+            $rulesEnabled = filter_var(
+                \App\Models\SystemSetting::get('student_rules_enabled', '1'),
+                FILTER_VALIDATE_BOOLEAN
+            );
+            $rulesVersion = max(1, (int) \App\Models\SystemSetting::get('student_rules_version', 1));
+
+            if ($rulesEnabled && (int) $user->student_rules_ack_version < $rulesVersion) {
+                $request->session()->put('student_rules_pending_version', $rulesVersion);
+            } else {
+                $request->session()->forget('student_rules_pending_version');
+            }
+        });
+    }
+
+    /**
+     * Jalankan satu langkah non-kritis; catat kegagalannya tanpa membatalkan login.
+     *
+     * Pesannya memuat nama langkah supaya log server langsung menunjuk bagian
+     * yang rusak — di produksi APP_DEBUG=false, jadi log adalah satu-satunya
+     * tempat penyebabnya terlihat. Bandingkan juga `php artisan diagnose:login`.
+     */
+    protected function attempt(string $step, callable $callback): void
+    {
+        try {
+            $callback();
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Langkah pasca-login gagal: {$step}", [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ]);
+        }
+    }
+
+    /**
      * Handle failed login attempt - increment counter (account is never locked)
      */
     protected function handleFailedLogin(User $user)
     {
-        $user->increment('login_attempts');
+        // Penghitung percobaan tidak pernah dipakai untuk mengunci akun, jadi
+        // kegagalan menaikkannya tidak boleh menutupi pesan "password salah"
+        // yang sebenarnya ingin dilihat siswa.
+        $this->attempt('naikkan penghitung percobaan login', fn () => $user->increment('login_attempts'));
     }
 
     public function logout(Request $request)
