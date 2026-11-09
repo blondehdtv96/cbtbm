@@ -236,6 +236,10 @@
                         <i class="bi bi-database-fill"></i>
                         <span>Bank Soal</span>
                     </a>
+                    <a href="{{ route('guru.review-soal.index') }}" class="menu-item {{ request()->routeIs('guru.review-soal.*') ? 'active' : '' }}">
+                        <i class="bi bi-clipboard-check-fill"></i>
+                        <span>Cek Soal</span>
+                    </a>
 
                     <div class="menu-label">AKUN</div>
                     <a href="{{ route('guru.profil') }}" class="menu-item {{ request()->routeIs('guru.profil') ? 'active' : '' }}">

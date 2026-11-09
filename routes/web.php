@@ -17,11 +17,12 @@ use App\Http\Controllers\HasilUjianController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\AntiCheatController;
 use App\Http\Controllers\SoalGambarLibraryController;
+use App\Http\Controllers\ReviewSoalController;
 
 /* |-------------------------------------------------------------------------- | Web Routes |-------------------------------------------------------------------------- */
 
 // Auth Routes
-Route::get('/', [LoginController::class , 'showLoginForm']);
+Route::get('/', fn() => redirect()->route('staff.login'));
 Route::get('/login', [LoginController::class , 'showLoginForm'])->name('login');
 Route::post('/login', [LoginController::class , 'login'])->middleware('throttle.custom:5,1')->name('login.process');
 
@@ -147,6 +148,12 @@ Route::middleware(['auth', 'role:superadmin,admin,guru'])->prefix('guru')->name(
     Route::get('/profil', [GuruController::class , 'profil'])->name('profil');
     Route::put('/profil', [GuruController::class , 'updateProfil'])->name('profil.update');
     Route::put('/profil/password', [GuruController::class , 'updatePassword'])->name('profil.password');
+
+    // Cek kebenaran soal yang dibuat superadmin/admin
+    Route::get('/cek-soal', [ReviewSoalController::class , 'index'])->name('review-soal.index');
+    Route::get('/cek-soal/{mapel}', [ReviewSoalController::class , 'show'])->name('review-soal.show');
+    Route::post('/cek-soal/soal/{banksoal}', [ReviewSoalController::class , 'store'])->name('review-soal.store');
+    Route::delete('/cek-soal/soal/{banksoal}', [ReviewSoalController::class , 'destroy'])->name('review-soal.destroy');
 });
 
 // Bank Soal Routes (Admin + Guru)

@@ -33,4 +33,9 @@ class BankSoal extends Model
     {
         return $this->belongsToMany(Ujian::class, 'ujian_bank_soals');
     }
+
+    public function reviews()
+    {
+        return $this->hasMany(SoalReview::class);
+    }
 }

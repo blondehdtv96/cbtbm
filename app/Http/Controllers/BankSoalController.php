@@ -53,6 +53,10 @@ class BankSoalController extends Controller
         $query = BankSoal::with(['mapel', 'guru', 'opsiJawabans'])
             ->where('mapel_id', $request->mapel_id);
 
+        if (\App\Models\SoalReview::tableReady()) {
+            $query->with('reviews.user:id,name');
+        }
+
         if (auth()->user()->isGuru() && auth()->user()->guru) {
             $query->where('guru_id', auth()->user()->guru->id);
         }

@@ -128,6 +128,29 @@
                             @if($soal->opsiJawabans->count() > 0)
                                 <small style="color:#94a3b8; font-size:11px;">{{ $soal->opsiJawabans->count() }} opsi</small>
                             @endif
+                            @if($soal->relationLoaded('reviews') && $soal->reviews->isNotEmpty())
+                                @php
+                                    $reviewBenar = $soal->reviews->where('status', 'benar');
+                                    $reviewSalah = $soal->reviews->where('status', 'salah');
+                                @endphp
+                                <div style="display:flex; gap:4px; margin-top:4px; flex-wrap:wrap;">
+                                    @if($reviewBenar->isNotEmpty())
+                                        <span class="badge-ios success" style="font-size:10px;" title="Dicek benar oleh: {{ $reviewBenar->map(fn($r) => $r->user->name ?? '-')->implode(', ') }}">
+                                            <i class="bi bi-check-lg"></i> {{ $reviewBenar->count() }} guru: benar
+                                        </span>
+                                    @endif
+                                    @if($reviewSalah->isNotEmpty())
+                                        <span class="badge-ios danger" style="font-size:10px; cursor:help;" title="{{ $reviewSalah->map(fn($r) => ($r->user->name ?? '-') . ': ' . $r->catatan)->implode("\n") }}">
+                                            <i class="bi bi-x-lg"></i> {{ $reviewSalah->count() }} guru: salah
+                                        </span>
+                                    @endif
+                                </div>
+                                @foreach($reviewSalah as $r)
+                                    <div style="font-size:11px; color:#b91c1c; margin-top:3px; max-width:400px; white-space:normal;">
+                                        <i class="bi bi-chat-left-text me-1"></i><strong>{{ $r->user->name ?? '-' }}:</strong> {{ $r->catatan }}
+                                    </div>
+                                @endforeach
+                            @endif
                         </td>
                         <td><span class="badge-ios {{ $soal->tipe_soal === 'essay' ? 'info' : 'purple' }}">{{ strtoupper(str_replace('_', ' ', $soal->tipe_soal)) }}</span></td>
                         <td style="text-align:center;">
