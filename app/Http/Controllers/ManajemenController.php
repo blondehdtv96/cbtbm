@@ -12,9 +12,17 @@ use Illuminate\Http\Request;
 class ManajemenController extends Controller
 {
     // ===== JURUSAN =====
-    public function jurusanIndex()
+    public function jurusanIndex(Request $request)
     {
-        $jurusans = Jurusan::withCount('kelas')->paginate(15);
+        $jurusans = Jurusan::withCount('kelas')
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $term = '%' . $request->search . '%';
+                $q->where(fn ($w) => $w->where('nama_jurusan', 'like', $term)->orWhere('kode_jurusan', 'like', $term));
+            })
+            ->when($request->filled('status'), fn ($q) => $q->where('is_active', $request->status === 'aktif'))
+            ->orderBy('kode_jurusan')
+            ->paginate(15)
+            ->withQueryString();
         return view('admin.jurusan.index', compact('jurusans'));
     }
 
@@ -52,9 +60,15 @@ class ManajemenController extends Controller
     }
 
     // ===== KELAS =====
-    public function kelasIndex()
+    public function kelasIndex(Request $request)
     {
-        $kelasList = Kelas::with('jurusan')->withCount('siswas')->paginate(15);
+        $kelasList = Kelas::with('jurusan')->withCount('siswas')
+            ->when($request->filled('search'), fn ($q) => $q->where('nama_kelas', 'like', '%' . $request->search . '%'))
+            ->when($request->filled('jurusan_id'), fn ($q) => $q->where('jurusan_id', $request->jurusan_id))
+            ->when($request->filled('tingkat'), fn ($q) => $q->where('tingkat', $request->tingkat))
+            ->orderBy('tingkat')->orderBy('nama_kelas')
+            ->paginate(15)
+            ->withQueryString();
         $jurusans = Jurusan::where('is_active', true)->get();
         return view('admin.kelas.index', compact('kelasList', 'jurusans'));
     }
@@ -95,9 +109,19 @@ class ManajemenController extends Controller
     }
 
     // ===== MAPEL =====
-    public function mapelIndex()
+    public function mapelIndex(Request $request)
     {
-        $mapels = Mapel::with('jurusan')->paginate(15);
+        $mapels = Mapel::with('jurusan')
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $term = '%' . $request->search . '%';
+                $q->where(fn ($w) => $w->where('nama_mapel', 'like', $term)->orWhere('kode_mapel', 'like', $term));
+            })
+            ->when($request->filled('jurusan_id'), fn ($q) => $q->where('jurusan_id', $request->jurusan_id))
+            ->when($request->filled('tipe'), fn ($q) => $q->where('is_umum', $request->tipe === 'umum'))
+            ->when($request->filled('status'), fn ($q) => $q->where('is_active', $request->status === 'aktif'))
+            ->orderBy('nama_mapel')
+            ->paginate(15)
+            ->withQueryString();
         $jurusans = Jurusan::where('is_active', true)->get();
         return view('admin.mapel.index', compact('mapels', 'jurusans'));
     }
@@ -136,9 +160,14 @@ class ManajemenController extends Controller
     }
 
     // ===== SESI UJIAN =====
-    public function sesiIndex()
+    public function sesiIndex(Request $request)
     {
-        $sesiList = SesiUjian::withCount('ujians')->orderBy('jam_mulai')->paginate(15);
+        $sesiList = SesiUjian::withCount('ujians')
+            ->when($request->filled('search'), fn ($q) => $q->where('nama_sesi', 'like', '%' . $request->search . '%'))
+            ->when($request->filled('status'), fn ($q) => $q->where('is_active', $request->status === 'aktif'))
+            ->orderBy('jam_mulai')
+            ->paginate(15)
+            ->withQueryString();
         return view('admin.sesi.index', compact('sesiList'));
     }
 

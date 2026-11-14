@@ -5,7 +5,26 @@
 
 @section('content')
 <div class="fade-in">
-    <div class="d-flex justify-content-end mb-3">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <form class="d-flex gap-2 flex-wrap" method="GET">
+            <input type="text" name="search" class="form-control-ios" placeholder="Cari nama kelas..." value="{{ request('search') }}" style="width: 200px;">
+            <select name="jurusan_id" class="form-select-ios" style="width: 180px;" onchange="this.form.submit()">
+                <option value="">Semua Jurusan</option>
+                @foreach($jurusans as $j)
+                    <option value="{{ $j->id }}" {{ request('jurusan_id') == $j->id ? 'selected' : '' }}>{{ $j->nama_jurusan }}</option>
+                @endforeach
+            </select>
+            <select name="tingkat" class="form-select-ios" style="width: 140px;" onchange="this.form.submit()">
+                <option value="">Semua Tingkat</option>
+                @foreach([10, 11, 12] as $t)
+                    <option value="{{ $t }}" {{ request('tingkat') == $t ? 'selected' : '' }}>Kelas {{ $t }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="btn btn-ios btn-ios-light"><i class="bi bi-search"></i></button>
+            @if(request()->hasAny(['search', 'jurusan_id', 'tingkat']))
+                <a href="{{ route('admin.kelas.index') }}" class="btn btn-ios btn-ios-light" title="Reset filter"><i class="bi bi-x-lg"></i></a>
+            @endif
+        </form>
         <button class="btn btn-ios btn-ios-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg"></i> Tambah Kelas</button>
     </div>
 

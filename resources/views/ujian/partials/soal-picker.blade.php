@@ -30,7 +30,7 @@
     <input type="text" id="soalPickerSearch" class="form-control-ios w-100 mb-2" placeholder="Cari pertanyaan..." {{ $locked ? 'disabled' : '' }}>
 
     <div style="max-height: 420px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 12px;">
-        <table class="table-ios" style="margin-bottom:0;">
+        <table class="table-ios" style="margin-bottom:0;" data-no-filter>
             <thead>
                 <tr>
                     <th style="width:36px; text-align:center;"><input type="checkbox" id="soalSelectAll" {{ $locked ? 'disabled' : '' }}></th>

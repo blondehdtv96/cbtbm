@@ -5,7 +5,30 @@
 
 @section('content')
 <div class="fade-in">
-    <div class="d-flex justify-content-end mb-3">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <form class="d-flex gap-2 flex-wrap" method="GET">
+            <input type="text" name="search" class="form-control-ios" placeholder="Cari kode/nama mapel..." value="{{ request('search') }}" style="width: 200px;">
+            <select name="jurusan_id" class="form-select-ios" style="width: 180px;" onchange="this.form.submit()">
+                <option value="">Semua Jurusan</option>
+                @foreach($jurusans as $j)
+                    <option value="{{ $j->id }}" {{ request('jurusan_id') == $j->id ? 'selected' : '' }}>{{ $j->nama_jurusan }}</option>
+                @endforeach
+            </select>
+            <select name="tipe" class="form-select-ios" style="width: 140px;" onchange="this.form.submit()">
+                <option value="">Semua Tipe</option>
+                <option value="umum" {{ request('tipe') === 'umum' ? 'selected' : '' }}>Umum</option>
+                <option value="kejuruan" {{ request('tipe') === 'kejuruan' ? 'selected' : '' }}>Kejuruan</option>
+            </select>
+            <select name="status" class="form-select-ios" style="width: 140px;" onchange="this.form.submit()">
+                <option value="">Semua Status</option>
+                <option value="aktif" {{ request('status') === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                <option value="nonaktif" {{ request('status') === 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+            </select>
+            <button type="submit" class="btn btn-ios btn-ios-light"><i class="bi bi-search"></i></button>
+            @if(request()->hasAny(['search', 'jurusan_id', 'tipe', 'status']))
+                <a href="{{ route('admin.mapel.index') }}" class="btn btn-ios btn-ios-light" title="Reset filter"><i class="bi bi-x-lg"></i></a>
+            @endif
+        </form>
         <button class="btn btn-ios btn-ios-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-lg"></i> Tambah Mapel</button>
     </div>
 
